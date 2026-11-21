@@ -1,0 +1,28 @@
+# Python virtual environments & bytecode
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Runtime data, downloads, rendered videos, SQLite DB & downloaded CV models
+data/
+*.db
+*.db-wal
+*.db-shm
+*.mp4
+*.mp3
+*.wav
+*.mkv
+*.webm
+*.ass
+*.onnx
+
+# Environment & secrets
+.env
+.env.local
+
+# OS & editor files
+.DS_Store
+.vscode/
+.idea/
