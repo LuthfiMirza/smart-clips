@@ -287,6 +287,18 @@ function smartClipsApp() {
       this.notify('Proyek dihapus.');
     },
 
+    async retryProject(projectId) {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/retry`, { method: 'POST' });
+        if (!res.ok) throw new Error('Gagal memulai ulang proyek');
+        this.notify('⚡ Turbo Mode dimulai! Hanya mengunduh audio ringan + klip HD terpilih.');
+        await this.fetchProjects();
+        await this.openProject(projectId, true);
+      } catch (e) {
+        this.notify(e.message, 'error');
+      }
+    },
+
     async deleteClip(clipId) {
       if (!confirm('Hapus klip ini?')) return;
       await fetch(`/api/clips/${clipId}`, { method: 'DELETE' });
@@ -430,3 +442,4 @@ function smartClipsApp() {
     },
   };
 }
+
