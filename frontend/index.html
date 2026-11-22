@@ -121,6 +121,7 @@
               <span x-show="!inspectedInfo?.is_live && inspectedInfo?.was_live" class="px-2 py-0.5 rounded-md bg-fuchsia-600/30 text-fuchsia-300 border border-fuchsia-500/40 text-[11px] font-bold">📺 REKAMAN LIVE (VOD)</span>
               <span x-show="!inspectedInfo?.is_live && !inspectedInfo?.was_live" class="px-2 py-0.5 rounded-md bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-bold">🎬 VIDEO YOUTUBE</span>
               <span x-show="inspectedInfo?.has_live_chat" class="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold">💬 Ada Live Chat Replay!</span>
+              <span x-show="inspectedInfo?.turbo_recommended" class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold">⚡ Turbo Mode Aktif (Hemat Kuota &amp; Cepat)</span>
               <span class="text-xs text-slate-400" x-show="inspectedInfo?.duration > 0" x-text="'⏱ ' + formatDuration(inspectedInfo?.duration)"></span>
             </div>
             <h3 class="font-bold text-sm sm:text-base text-white truncate" x-text="inspectedInfo?.title"></h3>
@@ -399,9 +400,15 @@
                       • <a :href="selectedProject.youtube_url" target="_blank" class="text-cyan-400 hover:underline">Buka Sumber YouTube ↗</a>
                     </p>
                   </div>
-                  <button @click="openProject(selectedProject.id)" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs font-bold shrink-0">
-                    🔄 Refresh
-                  </button>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <button x-show="selectedProject.status === 'failed'" @click="retryProject(selectedProject.id)"
+                            class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-cyan-500 hover:brightness-110 text-xs font-extrabold text-white shadow">
+                      ⚡ Proses Ulang (Turbo Mode)
+                    </button>
+                    <button @click="openProject(selectedProject.id)" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs font-bold">
+                      🔄 Refresh
+                    </button>
+                  </div>
                 </div>
 
                 <!-- Status Progress Bar -->
@@ -721,3 +728,4 @@
   <script src="/static/js/app.js"></script>
 </body>
 </html>
+
