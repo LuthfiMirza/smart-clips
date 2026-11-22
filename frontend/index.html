@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart-Clips AI Studio — YouTube Auto-Clipper ke TikTok & IG Reels</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="/static/css/custom.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body x-data="smartClipsApp()" x-init="init()" class="antialiased selection:bg-violet-600 selection:text-white">
+
+  <!-- Toast Notification -->
+  <div x-show="toast.show" x-transition
+       class="fixed bottom-6 right-6 z-50 max-w-md px-5 py-3.5 rounded-xl shadow-2xl border flex items-center gap-3"
+       :class="toast.type === 'error' ? 'bg-red-950/95 border-red-500/40 text-red-100' : 'bg-emerald-950/95 border-emerald-500/40 text-emerald-100'"
+       style="display:none;">
+    <span x-text="toast.type === 'error' ? '⚠️' : '✅'" class="text-lg"></span>
+    <span class="text-sm font-medium" x-text="toast.message"></span>
+  </div>
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-40 border-b border-white/10 bg-[#090b12]/90 backdrop-blur-xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 cursor-pointer" @click="activeTab = 'create'">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 via-fuchsia-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-violet-600/30 font-black text-white text-lg">
+          SC
+        </div>
+        <div>
+          <div class="font-extrabold text-base tracking-tight flex items-center gap-2">
+            Smart-Clips <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">AI STUDIO</span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden sm:block">YouTube VOD & Live &rarr; Auto-Edit 9:16 &rarr; TikTok & IG Reels</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
+        <button @click="activeTab = 'create'"
+                :class="activeTab === 'create' ? 'bg-violet-600 text-white shadow' : 'text-slate-300 hover:text-white hover:bg-white/5'"
+                class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">
+          🎬 Buat Klip
+        </button>
+        <button @click="activeTab = 'live'"
+                :class="activeTab === 'live' ? 'bg-red-600 text-white shadow' : 'text-slate-300 hover:text-white hover:bg-white/5'"
+                class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-red-400" :class="activeLiveCount() > 0 ? 'live-dot bg-white' : ''"></span>
+          Live Watcher
+          <span x-show="activeLiveCount() > 0" class="text-[10px] bg-black/30 px-1.5 rounded-full" x-text="activeLiveCount()"></span>
+        </button>
+        <button @click="activeTab = 'projects'; fetchProjects()"
+                :class="activeTab === 'projects' ? 'bg-violet-600 text-white shadow' : 'text-slate-300 hover:text-white hover:bg-white/5'"
+                class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">
+          📂 Proyek & Klip (<span x-text="projects.length"></span>)
+        </button>
+        <button @click="activeTab = 'settings'; fetchSettings()"
+                :class="activeTab === 'settings' ? 'bg-violet-600 text-white shadow' : 'text-slate-300 hover:text-white hover:bg-white/5'"
+                class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition">
+          ⚙️ API & Sosmed
+        </button>
+      </nav>
+
+      <!-- API Status Indicators -->
+      <div class="hidden lg:flex items-center gap-2 text-[11px]">
+        <span class="px-2.5 py-1 rounded-full border font-medium"
+              :class="health.gemini_configured ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'">
+          <span x-text="health.gemini_configured ? '● Gemini AI Aktif' : '○ Mode Lokal (Set Gemini)'"></span>
+        </span>
+        <span class="px-2.5 py-1 rounded-full border font-medium"
+              :class="health.tiktok_configured ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300' : 'bg-white/5 border-white/10 text-slate-400'">
+          TikTok
+        </span>
+        <span class="px-2.5 py-1 rounded-full border font-medium"
+              :class="health.instagram_configured ? 'bg-pink-500/10 border-pink-500/30 text-pink-300' : 'bg-white/5 border-white/10 text-slate-400'">
+          IG Reels
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+
+    <!-- ==================== TAB 1: CREATE CLIPS ==================== -->
+    <section x-show="activeTab === 'create'" x-transition.opacity>
+      <div class="text-center max-w-3xl mx-auto mb-8">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-300 text-xs font-semibold mb-3">
+          ✨ Gabungan Arsitektur ClippyMe • SharkyClips • Clipify • Chopify • OpenShorts
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight bg-gradient-to-r from-white via-violet-200 to-cyan-200 bg-clip-text text-transparent">
+          Paste Link YouTube / Live, Jadi Klip Viral 9:16 Otomatis
+        </h1>
+        <p class="text-slate-400 text-sm sm:text-base mt-2">
+          Otomatis mendeteksi momen seru (percakapan viral, teriakan audio, &amp; lonjakan Live Chat), auto-crop Podcast &amp; Gaming Split-Screen, subtitle karaoke, dan langsung posting ke TikTok &amp; IG Reels.
+        </p>
+      </div>
+
+      <!-- URL Input Card -->
+      <div class="glass-card rounded-2xl p-6 shadow-2xl max-w-4xl mx-auto mb-8">
+        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+          Link YouTube (Video Biasa, Rekaman Live / VOD, atau Sedang Live)
+        </label>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input type="url" x-model="form.youtube_url" @keydown.enter="inspectUrl()"
+                 placeholder="https://www.youtube.com/watch?v=... atau https://www.youtube.com/live/..."
+                 class="flex-1 bg-[#0b0f1c] border border-white/15 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30 rounded-xl px-4 py-3.5 text-sm text-white placeholder-slate-500 outline-none transition" />
+          <button @click="inspectUrl()" :disabled="inspecting || !form.youtube_url.trim()"
+                  class="px-5 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-40 text-sm font-bold text-white border border-white/10 transition flex items-center justify-center gap-2 whitespace-nowrap">
+            <span x-show="inspecting" class="animate-spin">⏳</span>
+            <span x-text="inspecting ? 'Mengecek...' : '🔍 Cek Video'"></span>
+          </button>
+        </div>
+
+        <!-- Inspected Video Preview Banner -->
+        <div x-show="inspectedInfo" x-transition class="mt-5 p-4 rounded-xl bg-[#0d1221] border border-white/10 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <img :src="inspectedInfo?.thumbnail_url" class="w-40 h-24 object-cover rounded-lg border border-white/10 shrink-0" alt="Thumbnail" />
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+              <span x-show="inspectedInfo?.is_live" class="px-2 py-0.5 rounded-md bg-red-600 text-white text-[11px] font-extrabold animate-pulse">🔴 SEDANG LIVE</span>
+              <span x-show="!inspectedInfo?.is_live && inspectedInfo?.was_live" class="px-2 py-0.5 rounded-md bg-fuchsia-600/30 text-fuchsia-300 border border-fuchsia-500/40 text-[11px] font-bold">📺 REKAMAN LIVE (VOD)</span>
+              <span x-show="!inspectedInfo?.is_live && !inspectedInfo?.was_live" class="px-2 py-0.5 rounded-md bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-bold">🎬 VIDEO YOUTUBE</span>
+              <span x-show="inspectedInfo?.has_live_chat" class="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold">💬 Ada Live Chat Replay!</span>
+              <span class="text-xs text-slate-400" x-show="inspectedInfo?.duration > 0" x-text="'⏱ ' + formatDuration(inspectedInfo?.duration)"></span>
+            </div>
+            <h3 class="font-bold text-sm sm:text-base text-white truncate" x-text="inspectedInfo?.title"></h3>
+            <p class="text-xs text-slate-400 mt-0.5" x-text="inspectedInfo?.channel"></p>
+          </div>
+        </div>
+
+        <!-- Configuration Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <!-- Mode Layout -->
+          <div class="bg-[#0c101e] p-4 rounded-xl border border-white/10">
+            <label class="block text-xs font-bold text-slate-300 mb-2">📐 Mode Layout 9:16</label>
+            <select x-model="form.layout_mode" class="w-full bg-[#141a2e] border border-white/15 rounded-lg px-3 py-2.5 text-sm text-white outline-none">
+              <option value="auto">🤖 Auto AI (Deteksi Podcast / Gaming)</option>
+              <option value="podcast">🎙️ Podcast / Ngobrol (Face Tracking)</option>
+              <option value="gaming_split">🎮 Gaming / Reaction (Split-Screen)</option>
+              <option value="blur_canvas">✨ Full 16:9 + Blur Canvas</option>
+            </select>
+            <p class="text-[11px] text-slate-400 mt-2">
+              <span x-show="form.layout_mode === 'gaming_split'">Atas 62% Gameplay/Layar, Bawah 38% Zoom Facecam Streamer.</span>
+              <span x-show="form.layout_mode === 'podcast'">Kamera otomatis melacak &amp; menggeser mengikuti wajah pembicara.</span>
+              <span x-show="form.layout_mode === 'blur_canvas'">Video utuh 16:9 di tengah dengan latar belakang blur estetik.</span>
+              <span x-show="form.layout_mode === 'auto'">AI memilih otomatis antara Face-Tracking atau Gaming Split-Screen.</span>
+            </p>
+          </div>
+
+          <!-- Subtitle Style -->
+          <div class="bg-[#0c101e] p-4 rounded-xl border border-white/10">
+            <label class="block text-xs font-bold text-slate-300 mb-2">💬 Gaya Subtitle Karaoke</label>
+            <select x-model="form.subtitle_style" class="w-full bg-[#141a2e] border border-white/15 rounded-lg px-3 py-2.5 text-sm text-white outline-none">
+              <option value="karaoke_yellow">⚡ Karaoke Kuning Pop (Opus Style)</option>
+              <option value="karaoke_green">🟢 Karaoke Hijau Neon</option>
+              <option value="neon_cyan">💎 Neon Cyan Futuristik</option>
+              <option value="clean_white">⚪ Clean White Minimalis</option>
+              <option value="none">🚫 Tanpa Subtitle</option>
+            </select>
+            <label class="flex items-center gap-2 mt-3 text-xs text-slate-300 cursor-pointer">
+              <input type="checkbox" x-model="form.hook_banner" class="rounded accent-violet-500" />
+              <span>Tampilkan Banner Hook Viral di Atas (4 detik awal)</span>
+            </label>
+          </div>
+
+          <!-- Facecam Preset & Clip Settings -->
+          <div class="bg-[#0c101e] p-4 rounded-xl border border-white/10">
+            <label class="block text-xs font-bold text-slate-300 mb-2">🎥 Posisi Facecam (Mode Gaming)</label>
+            <select x-model="form.facecam_preset" class="w-full bg-[#141a2e] border border-white/15 rounded-lg px-3 py-2.5 text-sm text-white outline-none">
+              <option value="auto">🤖 Auto Deteksi Wajah Streamer</option>
+              <option value="bottom_right">↘️ Pojok Kanan Bawah</option>
+              <option value="bottom_left">↙️ Pojok Kiri Bawah</option>
+              <option value="top_right">↗️ Pojok Kanan Atas</option>
+              <option value="top_left">↖️ Pojok Kiri Atas</option>
+              <option value="center_right">➡️ Tengah Kanan</option>
+            </select>
+            <div class="grid grid-cols-2 gap-2 mt-2.5">
+              <div>
+                <span class="text-[10px] text-slate-400">Jumlah Klip</span>
+                <input type="number" min="1" max="12" x-model.number="form.clip_count"
+                       class="w-full bg-[#141a2e] border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white" />
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400">Durasi Maks (dtk)</span>
+                <input type="number" min="20" max="120" x-model.number="form.max_duration"
+                       class="w-full bg-[#141a2e] border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-white" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional Long VOD cap -->
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-white/10">
+          <div class="flex items-center gap-3 text-xs text-slate-400">
+            <span>⚡ Batasi proses (menit awal, opsional untuk VOD 3+ jam):</span>
+            <input type="number" min="1" max="240" placeholder="Semua" x-model="form.max_video_minutes"
+                   class="w-24 bg-[#0b0f1c] border border-white/15 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500" />
+          </div>
+
+          <div class="flex flex-wrap gap-3">
+            <!-- If active live stream detected, show Real-Time Watcher shortcut -->
+            <button x-show="inspectedInfo?.is_live" @click="startLiveWatcherFromForm()"
+                    class="px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-sm shadow-lg shadow-red-600/30 transition">
+              🔴 Jalankan Real-Time Live Watcher
+            </button>
+
+            <button @click="createProject()" :disabled="submitting || !form.youtube_url.trim()"
+                    class="px-7 py-3 rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 hover:brightness-110 disabled:opacity-40 text-white font-extrabold text-sm shadow-lg shadow-violet-600/30 transition flex items-center gap-2">
+              <span x-show="submitting" class="animate-spin">⏳</span>
+              <span x-text="submitting ? 'Memulai Pipeline...' : '🚀 Generate Smart Clips Sekarang'"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Projects Quick List -->
+      <div class="max-w-5xl mx-auto" x-show="projects.length > 0">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">Proyek Terbaru</h2>
+          <button @click="activeTab = 'projects'" class="text-xs text-violet-400 hover:text-violet-300 font-semibold">Lihat Semua &rarr;</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <template x-for="p in projects.slice(0, 6)" :key="p.id">
+            <div @click="openProject(p.id)" class="glass-card rounded-xl p-4 hover:border-violet-500/50 cursor-pointer transition group">
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                      :class="{
+                        'bg-emerald-500/20 text-emerald-300': p.status === 'completed',
+                        'bg-violet-500/20 text-violet-300 animate-pulse': p.status === 'processing' || p.status === 'queued',
+                        'bg-red-500/20 text-red-300': p.status === 'failed' || p.status === 'live_watching'
+                      }"
+                      x-text="p.status === 'completed' ? '✅ Selesai (' + (p.clip_count || 0) + ' klip)' : (p.status === 'live_watching' ? '🔴 LIVE' : (p.status === 'failed' ? '❌ Gagal' : '⏳ ' + p.progress + '%'))">
+                </span>
+                <span class="text-[11px] text-slate-500" x-text="p.layout_mode"></span>
+              </div>
+              <h3 class="font-bold text-sm text-white group-hover:text-violet-300 line-clamp-2 transition" x-text="p.title || p.youtube_url"></h3>
+              <p class="text-xs text-slate-400 mt-1 truncate" x-text="p.status_message"></p>
+              <div x-show="p.status === 'processing' || p.status === 'queued'" class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mt-3">
+                <div class="h-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all duration-500" :style="'width:' + p.progress + '%'"></div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: LIVE STREAM WATCHER ==================== -->
+    <section x-show="activeTab === 'live'" x-transition.opacity style="display:none;">
+      <div class="max-w-5xl mx-auto">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 class="text-2xl font-black flex items-center gap-2.5">
+              <span class="w-3 h-3 rounded-full bg-red-500 live-dot"></span>
+              Real-Time YouTube Live Auto-Clipper
+            </h2>
+            <p class="text-sm text-slate-400 mt-1">
+              Paste link YouTube yang <b>sedang Live</b>. Sistem merekam per segmen (rolling chunks), mendeteksi teriakan &amp; momen viral, lalu langsung mengedit klip 9:16 secara otomatis selagi stream berjalan!
+            </p>
+          </div>
+        </div>
+
+        <!-- Start New Live Monitor Card -->
+        <div class="glass-card rounded-2xl p-6 mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">URL YouTube Live Stream (Sedang Berlangsung)</label>
+              <input type="url" x-model="liveForm.youtube_url" placeholder="https://www.youtube.com/watch?v=... atau /live/..."
+                     class="w-full bg-[#0b0f1c] border border-white/15 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-red-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">Layout Otomatis</label>
+              <select x-model="liveForm.layout_mode" class="w-full bg-[#141a2e] border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white">
+                <option value="gaming_split">🎮 Gaming / Reaction Split-Screen</option>
+                <option value="podcast">🎙️ Podcast Face Tracking</option>
+                <option value="blur_canvas">✨ Blur Canvas 16:9</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">Posisi Facecam Streamer</label>
+              <select x-model="liveForm.facecam_preset" class="w-full bg-[#141a2e] border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white">
+                <option value="auto">🤖 Auto Deteksi Wajah</option>
+                <option value="bottom_right">↘️ Pojok Kanan Bawah</option>
+                <option value="bottom_left">↙️ Pojok Kiri Bawah</option>
+                <option value="top_right">↗️ Pojok Kanan Atas</option>
+                <option value="top_left">↖️ Pojok Kiri Atas</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">Interval Rekam per Segmen (detik)</label>
+              <input type="number" min="60" max="600" x-model.number="liveForm.chunk_seconds"
+                     class="w-full bg-[#0b0f1c] border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1.5">Minimal Skor Viral untuk Auto-Clip (50–99)</label>
+              <input type="number" min="50" max="99" x-model.number="liveForm.auto_clip_threshold"
+                     class="w-full bg-[#0b0f1c] border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white" />
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-4 mt-5 pt-4 border-t border-white/10">
+            <label class="flex items-center gap-2.5 text-sm text-slate-200 cursor-pointer">
+              <input type="checkbox" x-model="liveForm.auto_post" class="w-4 h-4 accent-red-500" />
+              <span>⚡ <b>Autopilot Auto-Post</b> langsung ke TikTok &amp; IG Reels setiap klip jadi</span>
+            </label>
+            <button @click="startLiveMonitor()" :disabled="!liveForm.youtube_url.trim()"
+                    class="px-6 py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:brightness-110 disabled:opacity-40 text-white font-extrabold text-sm shadow-lg shadow-red-600/30 transition">
+              🔴 Mulai Pantau Live Stream
+            </button>
+          </div>
+        </div>
+
+        <!-- Active & Past Monitors -->
+        <div class="space-y-3">
+          <template x-for="m in liveMonitors" :key="m.id">
+            <div class="glass-card rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
+                        :class="m.status === 'running' ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-slate-700/50 text-slate-300'"
+                        x-text="m.status === 'running' ? '🔴 AKTIF MEMANTAU' : m.status.toUpperCase()"></span>
+                  <span class="text-xs text-slate-400" x-text="'Segmen diproses: ' + m.chunks_processed + ' • Klip jadi: ' + m.clips_generated"></span>
+                </div>
+                <h3 class="font-bold text-base text-white truncate" x-text="m.title || m.youtube_url"></h3>
+                <p class="text-xs text-cyan-300 mt-1 font-mono" x-text="m.last_log"></p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <button @click="openProject('liveproj_' + m.id.slice(-8))"
+                        class="px-3.5 py-2 rounded-lg bg-violet-600/20 hover:bg-violet-600/30 text-violet-200 border border-violet-500/30 text-xs font-bold">
+                  Lihat Klip
+                </button>
+                <button x-show="m.status === 'running'" @click="stopLiveMonitor(m.id)"
+                        class="px-3.5 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-200 border border-red-500/40 text-xs font-bold">
+                  ⏹ Stop
+                </button>
+              </div>
+            </div>
+          </template>
+          <div x-show="liveMonitors.length === 0" class="text-center py-12 text-slate-500 text-sm glass-card rounded-xl">
+            Belum ada sesi pemantauan Live Stream. Paste link YouTube yang sedang Live di atas untuk memulai!
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: PROJECTS & CLIP GALLERY ==================== -->
+    <section x-show="activeTab === 'projects'" x-transition.opacity style="display:none;">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Sidebar Project List -->
+        <aside class="lg:col-span-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="font-extrabold text-lg">Daftar Proyek</h2>
+            <button @click="activeTab = 'create'" class="text-xs px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 font-bold text-white">+ Baru</button>
+          </div>
+          <div class="space-y-2.5 max-h-[75vh] overflow-y-auto pr-1">
+            <template x-for="p in projects" :key="p.id">
+              <div @click="openProject(p.id)"
+                   class="glass-card rounded-xl p-3.5 cursor-pointer transition border"
+                   :class="selectedProject?.id === p.id ? 'border-violet-500 bg-violet-950/30' : 'border-white/5 hover:border-white/20'">
+                <div class="flex items-start justify-between gap-2">
+                  <h3 class="font-bold text-xs sm:text-sm text-white line-clamp-2" x-text="p.title || p.youtube_url"></h3>
+                  <button @click.stop="deleteProject(p.id)" title="Hapus Proyek" class="text-slate-500 hover:text-red-400 text-xs px-1">🗑</button>
+                </div>
+                <div class="flex items-center justify-between mt-2 text-[11px]">
+                  <span :class="p.status === 'completed' ? 'text-emerald-400' : (p.status === 'failed' ? 'text-red-400' : 'text-violet-300')"
+                        x-text="p.status === 'completed' ? '✅ ' + (p.clip_count || 0) + ' Klip' : (p.status === 'failed' ? '❌ Gagal' : '⏳ ' + p.progress + '%')"></span>
+                  <span class="text-slate-500" x-text="p.layout_mode"></span>
+                </div>
+                <div x-show="p.status === 'processing' || p.status === 'queued'" class="w-full h-1 bg-white/10 rounded-full overflow-hidden mt-2">
+                  <div class="h-full bg-violet-500 transition-all" :style="'width:' + p.progress + '%'"></div>
+                </div>
+              </div>
+            </template>
+            <div x-show="projects.length === 0" class="glass-card rounded-xl p-8 text-center text-slate-400 text-sm">
+              Belum ada proyek. Mulai dengan paste link YouTube di tab <b>Buat Klip</b>!
+            </div>
+          </div>
+        </aside>
+
+        <!-- Selected Project Workspace & Clips -->
+        <div class="lg:col-span-8">
+          <template x-if="!selectedProject">
+            <div class="glass-card rounded-2xl p-12 text-center text-slate-400">
+              <div class="text-4xl mb-3">🎬</div>
+              <p class="font-semibold text-white">Pilih proyek di sebelah kiri untuk melihat hasil klip 9:16</p>
+            </div>
+          </template>
+
+          <template x-if="selectedProject">
+            <div class="space-y-6">
+              <!-- Project Header & Real-time Progress -->
+              <div class="glass-card rounded-2xl p-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div class="min-w-0">
+                    <h2 class="font-black text-lg sm:text-xl text-white truncate" x-text="selectedProject.title"></h2>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                      <span x-text="selectedProject.channel || ''"></span>
+                      <span x-show="selectedProject.duration > 0" x-text="' • Durasi ' + formatDuration(selectedProject.duration)"></span>
+                      • <a :href="selectedProject.youtube_url" target="_blank" class="text-cyan-400 hover:underline">Buka Sumber YouTube ↗</a>
+                    </p>
+                  </div>
+                  <button @click="openProject(selectedProject.id)" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs font-bold shrink-0">
+                    🔄 Refresh
+                  </button>
+                </div>
+
+                <!-- Status Progress Bar -->
+                <div class="mt-4">
+                  <div class="flex justify-between text-xs mb-1.5">
+                    <span class="font-semibold"
+                          :class="selectedProject.status === 'failed' ? 'text-red-400' : (selectedProject.status === 'completed' ? 'text-emerald-400' : 'text-violet-300')"
+                          x-text="selectedProject.status_message"></span>
+                    <span class="font-mono text-slate-400" x-text="selectedProject.progress + '%'"></span>
+                  </div>
+                  <div class="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
+                    <div class="h-full transition-all duration-500 rounded-full"
+                         :class="selectedProject.status === 'failed' ? 'bg-red-500' : (selectedProject.status === 'completed' ? 'bg-emerald-500' : 'bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400')"
+                         :style="'width:' + selectedProject.progress + '%'"></div>
+                  </div>
+                </div>
+
+                <!-- Audio Hype Waveform & Live Chat Spikes Visualizer -->
+                <div x-show="selectedProject.audio_analysis?.energy_timeline?.length > 0" class="mt-5 pt-4 border-t border-white/10">
+                  <div class="flex items-center justify-between text-[11px] text-slate-400 mb-2">
+                    <span>🔥 Grafik Energi Suara (Deteksi Teriakan / Ketawa)</span>
+                    <span x-text="(selectedProject.audio_analysis?.spikes?.length || 0) + ' lonjakan audio • ' + (selectedProject.chat_spikes?.length || 0) + ' lonjakan chat'"></span>
+                  </div>
+                  <div class="h-12 flex items-end gap-[2px] bg-[#0a0e1a] p-2 rounded-lg border border-white/5">
+                    <template x-for="(pt, idx) in selectedProject.audio_analysis?.energy_timeline || []" :key="idx">
+                      <div class="flex-1 rounded-t-sm transition-all"
+                           :class="pt.v > 0.72 ? 'bg-amber-400' : (pt.v > 0.45 ? 'bg-violet-500' : 'bg-slate-600/60')"
+                           :style="'height:' + Math.max(8, Math.round(pt.v * 100)) + '%'"
+                           :title="formatDuration(pt.t) + ' • Energi ' + Math.round(pt.v * 100) + '%'"></div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Clips Gallery Grid -->
+              <div class="space-y-5">
+                <template x-for="(clip, cIdx) in selectedClips" :key="clip.id">
+                  <div class="glass-card rounded-2xl p-5 grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+
+                    <!-- Left: 9:16 Vertical Video Player -->
+                    <div class="md:col-span-5 flex flex-col items-center">
+                      <div class="phone-frame w-full max-w-[260px] relative">
+                        <template x-if="clip.status === 'ready' && clip.video_url">
+                          <video :src="clip.video_url + '?v=' + clip.updated_at" :poster="clip.thumbnail_url"
+                                 controls playsinline preload="metadata" class="w-full h-full object-cover"></video>
+                        </template>
+                        <template x-if="clip.status !== 'ready'">
+                          <div class="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-[#0d111d]">
+                            <div class="text-3xl mb-2 animate-bounce" x-text="clip.status === 'failed' ? '⚠️' : '🎬'"></div>
+                            <div class="text-xs font-bold text-slate-200" x-text="clip.status === 'failed' ? 'Render Gagal' : 'Sedang Merender 9:16...'"></div>
+                          </div>
+                        </template>
+                      </div>
+                      <div class="flex items-center gap-2 mt-2.5 text-[11px] text-slate-400">
+                        <span class="px-2 py-0.5 rounded bg-white/5 border border-white/10" x-text="formatDuration(clip.start_time) + ' - ' + formatDuration(clip.end_time)"></span>
+                        <span class="px-2 py-0.5 rounded bg-white/5 border border-white/10" x-text="Math.round(clip.duration) + ' dtk'"></span>
+                        <span class="px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 font-semibold" x-text="clip.layout_mode"></span>
+                      </div>
+                    </div>
+
+                    <!-- Right: Metadata, Virality Score, Caption, Edit & Auto-Post Actions -->
+                    <div class="md:col-span-7 flex flex-col gap-3">
+                      <div class="flex items-start justify-between gap-2">
+                        <div>
+                          <div class="flex flex-wrap items-center gap-2 mb-1">
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-black"
+                                  :class="clip.virality_score >= 85 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'"
+                                  x-text="'🔥 Skor Viral: ' + clip.virality_score + '/100'"></span>
+                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase bg-white/10 text-slate-300" x-text="clip.category"></span>
+                          </div>
+                          <h3 class="font-extrabold text-base sm:text-lg text-white leading-snug" x-text="'#' + (cIdx + 1) + ' ' + clip.title"></h3>
+                        </div>
+                        <button @click="deleteClip(clip.id)" title="Hapus Klip" class="text-slate-500 hover:text-red-400 text-sm">🗑</button>
+                      </div>
+
+                      <p class="text-xs text-slate-300 bg-white/5 p-3 rounded-xl border border-white/5" x-text="'💡 Alasan AI: ' + (clip.reason || '-')"></p>
+
+                      <!-- Hook & Social Caption -->
+                      <div class="space-y-2">
+                        <div>
+                          <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                            <span class="font-bold">Caption &amp; Hashtag Siap Posting</span>
+                            <button @click="copyCaption(clip)" class="text-cyan-400 hover:text-cyan-300 font-bold">📋 Copy Caption</button>
+                          </div>
+                          <textarea x-model="clip.caption" rows="2"
+                                    class="w-full bg-[#0b0f1c] border border-white/10 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none focus:border-violet-500"></textarea>
+                          <input type="text" x-model="clip.hashtags"
+                                 class="w-full mt-1.5 bg-[#0b0f1c] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-cyan-300 outline-none focus:border-violet-500" />
+                        </div>
+                      </div>
+
+                      <!-- Action Buttons Row 1: Edit / Re-render / Download -->
+                      <div class="flex flex-wrap gap-2 pt-1">
+                        <button @click="openEditModal(clip)"
+                                class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-white border border-white/10 transition">
+                          ✂️ Edit Crop / Waktu / Layout
+                        </button>
+                        <a :href="'/api/clips/' + clip.id + '/download'"
+                           class="px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-200 border border-emerald-500/30 text-xs font-bold transition">
+                          ⬇️ Download MP4 9:16
+                        </a>
+                      </div>
+
+                      <!-- Action Buttons Row 2: Auto-Publish TikTok & Instagram Reels -->
+                      <div class="pt-3 border-t border-white/10">
+                        <div class="text-[11px] font-bold text-slate-400 mb-2">🚀 Auto-Posting ke Media Sosial</div>
+                        <div class="flex flex-wrap gap-2">
+                          <button @click="publishClip(clip, ['tiktok'])" :disabled="publishingId === clip.id || clip.status !== 'ready'"
+                                  class="px-3.5 py-2 rounded-xl bg-black hover:bg-slate-900 border border-cyan-400/40 text-white text-xs font-extrabold transition flex items-center gap-1.5 disabled:opacity-40">
+                            <span>🎵</span>
+                            <span x-text="clip.tiktok_status === 'posted' ? '✅ Terposting TikTok' : 'Post ke TikTok'"></span>
+                          </button>
+
+                          <button @click="publishClip(clip, ['instagram'])" :disabled="publishingId === clip.id || clip.status !== 'ready'"
+                                  class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-fuchsia-600 to-orange-500 hover:brightness-110 text-white text-xs font-extrabold transition flex items-center gap-1.5 disabled:opacity-40">
+                            <span>📸</span>
+                            <span x-text="clip.instagram_status === 'posted' ? '✅ Terposting IG Reels' : 'Post ke IG Reels'"></span>
+                          </button>
+
+                          <button @click="publishClip(clip, ['tiktok', 'instagram'])" :disabled="publishingId === clip.id || clip.status !== 'ready'"
+                                  class="px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-extrabold transition disabled:opacity-40">
+                            ⚡ Post Keduanya
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: SETTINGS & SOCIAL API ==================== -->
+    <section x-show="activeTab === 'settings'" x-transition.opacity style="display:none;">
+      <div class="max-w-4xl mx-auto space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-2xl font-black">⚙️ Pengaturan AI &amp; Koneksi TikTok / Instagram</h2>
+            <p class="text-sm text-slate-400 mt-1">Semua kunci disimpan aman secara lokal di database SQLite komputer Anda.</p>
+          </div>
+          <button @click="saveSettings()" class="px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-extrabold text-sm shadow-lg">
+            💾 Simpan Pengaturan
+          </button>
+        </div>
+
+        <!-- Gemini AI Settings -->
+        <div class="glass-card rounded-2xl p-6 space-y-4">
+          <h3 class="font-extrabold text-base text-violet-300">🧠 Otak AI (Google Gemini API)</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-bold text-slate-300 mb-1">Gemini API Key (dari aistudio.google.com)</label>
+              <input type="password" x-model="settings.gemini_api_key" placeholder="AIzaSy..."
+                     class="w-full bg-[#0b0f1c] border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-violet-500" />
+              <p class="text-[11px] text-slate-400 mt-1">Opsional — tanpa API key pun aplikasi tetap bisa berjalan memakai mode deteksi lokal (Audio Spike + Live Chat + YouTube Subtitles).</p>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">Model Viral Director</label>
+              <select x-model="settings.gemini_model" class="w-full bg-[#141a2e] border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white">
+                <option value="gemini-4-hydrogen">Gemini 4 Hydrogen (Cepat &amp; Seimbang — Direkomendasikan)</option>
+                <option value="gemini-4-argon">Gemini 4 Argon (Efisien &amp; Pintar)</option>
+                <option value="gemini-4-neon">Gemini 4 Neon (Akurasi Tertinggi)</option>
+                <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (Paling Hemat)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">Engine Transkripsi Suara</label>
+              <select x-model="settings.transcribe_engine" class="w-full bg-[#141a2e] border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white">
+                <option value="auto">Auto (YouTube JSON3 &rarr; Gemini 3.5 Transcribe &rarr; Whisper)</option>
+                <option value="gemini">Gemini 3.5 Transcribe (Akurat + Word Timestamp)</option>
+                <option value="youtube_subs">Hanya Subtitle YouTube (Instan &amp; Gratis)</option>
+                <option value="whisper">Faster-Whisper Lokal</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- TikTok API Settings -->
+        <div class="glass-card rounded-2xl p-6 space-y-4">
+          <h3 class="font-extrabold text-base text-cyan-300">🎵 TikTok Content Posting API v2</h3>
+          <p class="text-xs text-slate-400">
+            Mendukung <b>FILE_UPLOAD langsung dari localhost</b> (tidak butuh domain publik!). Dapatkan token di <code>developers.tiktok.com</code> dengan scope <code>video.publish</code>.
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-bold text-slate-300 mb-1">TikTok Creator Access Token</label>
+              <input type="password" x-model="settings.tiktok_access_token" placeholder="act.xxxxxxxx..."
+                     class="w-full bg-[#0b0f1c] border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">Privasi Default Postingan</label>
+              <select x-model="settings.tiktok_privacy" class="w-full bg-[#141a2e] border border-white/15 rounded-xl px-3 py-2.5 text-sm text-white">
+                <option value="PUBLIC_TO_EVERYONE">Publik (Semua Orang)</option>
+                <option value="MUTUAL_FOLLOW_FRIENDS">Hanya Teman</option>
+                <option value="SELF_ONLY">Privat / Draft (Untuk Uji Coba)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Instagram Graph API Settings -->
+        <div class="glass-card rounded-2xl p-6 space-y-4">
+          <h3 class="font-extrabold text-base text-pink-300">📸 Instagram Reels (Meta Graph API v21.0)</h3>
+          <p class="text-xs text-slate-400">
+            Membutuhkan akun <b>Instagram Business/Creator</b> terhubung ke Facebook Page + token dengan izin <code>instagram_content_publish</code>. Karena Meta mengambil video via URL, isi juga <b>Public Base URL</b> (misal URL <code>ngrok http 8088</code> atau Cloudflare Tunnel).
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">Instagram Business User ID</label>
+              <input type="text" x-model="settings.instagram_user_id" placeholder="178414xxxxxxxxx"
+                     class="w-full bg-[#0b0f1c] border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">Public Base URL (untuk Meta tarik MP4)</label>
+              <input type="url" x-model="settings.public_base_url" placeholder="https://xxxx.ngrok-free.app"
+                     class="w-full bg-[#0b0f1c] border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-xs font-bold text-slate-300 mb-1">Meta Long-Lived Access Token</label>
+              <input type="password" x-model="settings.instagram_access_token" placeholder="EAAxxxxxxx..."
+                     class="w-full bg-[#0b0f1c] border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== MODAL: EDIT CLIP & VISUAL FACECAM CROP PICKER ==================== -->
+  <div x-show="editModal.open" x-transition.opacity style="display:none;"
+       class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="glass-card rounded-2xl max-w-3xl w-full p-6 border border-white/15 shadow-2xl my-8" @click.away="editModal.open = false">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-black text-lg text-white">✂️ Edit Klip &amp; Atur Kotak Facecam</h3>
+        <button @click="editModal.open = false" class="text-slate-400 hover:text-white text-xl">&times;</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Judul Klip</label>
+          <input type="text" x-model="editModal.title" class="w-full bg-[#0b0f1c] border border-white/15 rounded-lg px-3 py-2 text-sm text-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Teks Banner Hook (Atas Video)</label>
+          <input type="text" x-model="editModal.hook_text" class="w-full bg-[#0b0f1c] border border-white/15 rounded-lg px-3 py-2 text-sm text-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Detik Mulai (Start)</label>
+          <input type="number" step="0.5" x-model.number="editModal.start_time" class="w-full bg-[#0b0f1c] border border-white/15 rounded-lg px-3 py-2 text-sm text-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Detik Selesai (End)</label>
+          <input type="number" step="0.5" x-model.number="editModal.end_time" class="w-full bg-[#0b0f1c] border border-white/15 rounded-lg px-3 py-2 text-sm text-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Layout 9:16</label>
+          <select x-model="editModal.layout_mode" class="w-full bg-[#141a2e] border border-white/15 rounded-lg px-3 py-2 text-sm text-white">
+            <option value="podcast">🎙️ Podcast Face Tracking</option>
+            <option value="gaming_split">🎮 Gaming Split-Screen (Atas Gameplay + Bawah Facecam)</option>
+            <option value="blur_canvas">✨ Blur Canvas 16:9</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Gaya Subtitle Karaoke</label>
+          <select x-model="editModal.subtitle_style" class="w-full bg-[#141a2e] border border-white/15 rounded-lg px-3 py-2 text-sm text-white">
+            <option value="karaoke_yellow">⚡ Karaoke Kuning</option>
+            <option value="karaoke_green">🟢 Karaoke Hijau</option>
+            <option value="neon_cyan">💎 Neon Cyan</option>
+            <option value="clean_white">⚪ Clean White</option>
+            <option value="none">🚫 Tanpa Subtitle</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Interactive Visual Facecam Crop Picker (Shown for Gaming Split-Screen!) -->
+      <div x-show="editModal.layout_mode === 'gaming_split'" class="mt-5 pt-4 border-t border-white/10">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <span class="text-xs font-bold text-amber-300">🎯 Tarik (Drag) Kotak Kuning di Atas Video untuk Menandai Area Facecam Streamer</span>
+          <div class="flex gap-1.5 text-[11px]">
+            <button @click="applyFacecamPreset('bottom_right')" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">Kanan Bawah</button>
+            <button @click="applyFacecamPreset('bottom_left')" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">Kiri Bawah</button>
+            <button @click="applyFacecamPreset('top_right')" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">Kanan Atas</button>
+            <button @click="applyFacecamPreset('top_left')" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20">Kiri Atas</button>
+          </div>
+        </div>
+
+        <div class="crop-stage bg-black aspect-video w-full"
+             x-ref="cropStage"
+             @mousedown="startCropDrag($event)"
+             @mousemove="moveCropDrag($event)"
+             @mouseup="endCropDrag()"
+             @mouseleave="endCropDrag()">
+          <img x-show="selectedProject?.preview_frame_url" :src="selectedProject?.preview_frame_url"
+               class="w-full h-full object-contain pointer-events-none" alt="Frame Preview" />
+          <div x-show="!selectedProject?.preview_frame_url" class="w-full h-full flex items-center justify-center text-xs text-slate-500">
+            Preview 16:9 area facecam
+          </div>
+          <div class="crop-box-overlay"
+               :style="`left:${editModal.facecam_box.x*100}%; top:${editModal.facecam_box.y*100}%; width:${editModal.facecam_box.w*100}%; height:${editModal.facecam_box.h*100}%;`">
+            <span class="crop-box-label">🎥 FACECAM</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">
+        <button @click="editModal.open = false" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold">Batal</button>
+        <button @click="saveClipEdit(false)" class="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs font-bold text-white">Simpan Teks Saja</button>
+        <button @click="saveClipEdit(true)" class="px-5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:brightness-110 text-xs font-extrabold text-white shadow-lg">
+          🎬 Simpan &amp; Re-Render Video 9:16
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
