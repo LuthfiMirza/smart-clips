@@ -1,6 +1,7 @@
 """Smart-Clips AI — FastAPI Server & REST API."""
 import json
 import shutil
+import subprocess
 import uuid
 from pathlib import Path
 from typing import Optional
@@ -182,11 +183,37 @@ def api_create_project(req: CreateProjectRequest, background_tasks: BackgroundTa
     return {"ok": True, "project": _serialize_project(proj)}
 
 
+@app.post("/api/projects/{project_id}/retry")
+def api_retry_project(project_id: str, background_tasks: BackgroundTasks):
+    proj = get_project(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proyek tidak ditemukan")
+    from backend.database import update_project
+    update_project(
+        project_id,
+        status="queued",
+        progress=2,
+        status_message="Memulai ulang dengan Turbo Smart-Clips pipeline...",
+        error_message="",
+    )
+    background_tasks.add_task(
+        run_vod_pipeline,
+        project_id=project_id,
+        clip_count=5,
+        min_duration=20,
+        max_duration=60,
+        hook_banner=True,
+    )
+    return {"ok": True, "project": _serialize_project(get_project(project_id))}
+
+
 @app.delete("/api/projects/{project_id}")
 def api_delete_project(project_id: str):
     proj = get_project(project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Proyek tidak ditemukan")
+    # Terminate any active yt-dlp/ffmpeg subprocess targeting this project directory
+    subprocess.run(["pkill", "-f", project_id], capture_output=True)
     # Cleanup clips on disk
     for c in list_clips(project_id=project_id):
         cdir = CLIPS_DIR / c["id"]
@@ -331,3 +358,4 @@ def api_get_settings():
 def api_update_settings(req: SettingsUpdateRequest):
     updated = update_settings(req.settings)
     return {"ok": True, "settings": updated}
+
