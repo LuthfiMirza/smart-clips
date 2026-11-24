@@ -59,6 +59,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def disable_static_cache(request, call_next):
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+    return response
+
 # Mount media & static frontend assets
 app.mount("/media/clips", StaticFiles(directory=str(CLIPS_DIR)), name="media_clips")
 app.mount("/media/previews", StaticFiles(directory=str(PREVIEWS_DIR)), name="media_previews")
