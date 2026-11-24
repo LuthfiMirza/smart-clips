@@ -1,10 +1,15 @@
 /**
- * Smart-Clips AI Studio — Clean SaaS Admin Dashboard Controller (Alpine.js)
+ * Smart-Clips AI — Exact TailAdmin v2 Dashboard Controller (Alpine.js + ApexCharts)
+ * Includes native <dialog> light-dismiss fallback, color-scheme meta sync, and safe non-null bindings.
  */
 function smartClipsApp() {
   return {
     activeTab: 'overview',
-    darkMode: true,
+    sidebarCollapsed: false,
+    mobileMenuOpen: false,
+    darkMode: false,
+    searchQuery: '',
+
     health: {
       gemini_configured: false,
       tiktok_configured: false,
@@ -47,19 +52,36 @@ function smartClipsApp() {
     projects: [],
     allClips: [],
     clipFilterProjectId: '',
-    selectedProject: null,
-    selectedClips: [],
-    studioClip: null,
     publishingId: null,
+
+    // Safe non-null Studio Modal Form (prevents Alpine null x-model crash!)
+    studioForm: {
+      id: '',
+      project_id: '',
+      title: '',
+      hook_text: '',
+      caption: '',
+      hashtags: '',
+      reason: '',
+      virality_score: 0,
+      start_time: 0,
+      end_time: 0,
+      duration: 0,
+      layout_mode: 'gaming_split',
+      subtitle_style: 'karaoke_yellow',
+      video_url: '',
+      thumbnail_url: '',
+      updated_at: '',
+      facecam_box: { x: 0.72, y: 0.62, w: 0.26, h: 0.34 },
+    },
 
     // Settings
     settings: {},
 
-    // Edit Modal
+    // Edit Modal State
     editModal: {
-      open: false,
-      clipId: null,
-      projectId: null,
+      clipId: '',
+      projectId: '',
       title: '',
       hook_text: '',
       caption: '',
@@ -74,14 +96,20 @@ function smartClipsApp() {
       dragStartY: 0,
     },
 
+    barChart: null,
+    radialChart: null,
     pollTimer: null,
 
     async init() {
-      const savedTheme = localStorage.getItem('sc_theme');
-      if (savedTheme === 'light') {
-        this.darkMode = false;
-        document.documentElement.classList.remove('dark');
-      }
+      // Sync darkMode with stored color-scheme preference (TailAdmin defaults to clean Light Mode)
+      try {
+        const stored = localStorage.getItem('color-scheme');
+        this.darkMode = stored === 'dark';
+        this._applyColorScheme(stored);
+      } catch (e) {}
+
+      // Safari fallback for <dialog closedby="any"> light-dismiss (modern-web-guidance: dialog)
+      this._installDialogLightDismissFallback();
 
       await Promise.all([
         this.fetchHealth(),
@@ -91,6 +119,17 @@ function smartClipsApp() {
         this.fetchSettings(),
       ]);
 
+      this.$nextTick(() => this.renderCharts());
+
+      // Sync theme across browser tabs
+      window.addEventListener('storage', (ev) => {
+        if (ev.key === 'color-scheme') {
+          this.darkMode = ev.newValue === 'dark';
+          this._applyColorScheme(ev.newValue);
+          this.renderCharts();
+        }
+      });
+
       this.pollTimer = setInterval(async () => {
         const hasActiveProj = this.projects.some(p => ['queued', 'processing', 'live_watching'].includes(p.status));
         const hasRenderingClip = this.allClips.some(c => c.status === 'rendering');
@@ -98,6 +137,7 @@ function smartClipsApp() {
 
         if (hasActiveProj || hasRenderingClip) {
           await Promise.all([this.fetchProjects(), this.fetchAllClips()]);
+          if (this.activeTab === 'overview') this.renderCharts();
         }
         if (hasActiveLive || this.activeTab === 'live') {
           await this.fetchLiveMonitors();
@@ -105,35 +145,194 @@ function smartClipsApp() {
       }, 3000);
     },
 
-    toggleTheme() {
-      this.darkMode = !this.darkMode;
+    _applyColorScheme(storedValue) {
+      const meta = document.querySelector('meta[name="color-scheme"]');
+      if (meta) meta.content = storedValue || 'light dark';
       if (this.darkMode) {
         document.documentElement.classList.add('dark');
-        localStorage.setItem('sc_theme', 'dark');
       } else {
         document.documentElement.classList.remove('dark');
-        localStorage.setItem('sc_theme', 'light');
       }
+    },
+
+    _installDialogLightDismissFallback() {
+      if ('closedBy' in HTMLDialogElement.prototype) return;
+      const outside = (e, dialog) => {
+        const r = dialog.getBoundingClientRect();
+        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      };
+      for (const dialog of document.querySelectorAll('dialog[closedby="any"]')) {
+        let pressedOutside = false;
+        dialog.addEventListener('pointerdown', (e) => { pressedOutside = outside(e, dialog); });
+        dialog.addEventListener('pointerup', (e) => {
+          if (pressedOutside && outside(e, dialog)) dialog.close();
+        });
+      }
+    },
+
+    toggleSidebar() {
+      if (window.innerWidth < 1280) {
+        this.mobileMenuOpen = !this.mobileMenuOpen;
+      } else {
+        this.sidebarCollapsed = !this.sidebarCollapsed;
+      }
+    },
+
+    toggleTheme() {
+      const sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const targetDark = !this.darkMode;
+      this.darkMode = targetDark;
+      try {
+        if (targetDark === sysDark) {
+          localStorage.removeItem('color-scheme');
+          this._applyColorScheme(null);
+        } else {
+          const val = targetDark ? 'dark' : 'light';
+          localStorage.setItem('color-scheme', val);
+          this._applyColorScheme(val);
+        }
+      } catch (e) {
+        this._applyColorScheme(targetDark ? 'dark' : 'light');
+      }
+      this.$nextTick(() => this.renderCharts());
     },
 
     navigate(tab) {
       this.activeTab = tab;
+      this.mobileMenuOpen = false;
       if (tab === 'projects' || tab === 'overview') this.fetchProjects();
       if (tab === 'clips' || tab === 'overview') this.fetchAllClips();
       if (tab === 'settings') this.fetchSettings();
       if (tab === 'live') this.fetchLiveMonitors();
+      if (tab === 'overview') {
+        this.$nextTick(() => this.renderCharts());
+      }
     },
 
-    pageTitle() {
-      const titles = {
-        overview: 'Studio Overview',
-        create: 'AI Viral Clip Generator',
-        projects: 'Source YouTube Pipelines',
-        clips: '9:16 Shorts Library',
-        live: 'Live Stream Radar',
-        settings: 'API & Cloud Publishing',
-      };
-      return titles[this.activeTab] || 'Smart-Clips AI';
+    topViralityScore() {
+      if (!this.allClips.length) return 0;
+      return Math.max(...this.allClips.map(c => Number(c.virality_score) || 0));
+    },
+
+    avgViralityScore() {
+      if (!this.allClips.length) return 0;
+      const sum = this.allClips.reduce((acc, c) => acc + (Number(c.virality_score) || 0), 0);
+      return Math.round(sum / this.allClips.length);
+    },
+
+    filteredClips() {
+      let list = this.allClips;
+      if (this.clipFilterProjectId) {
+        list = list.filter(c => c.project_id === this.clipFilterProjectId);
+      }
+      if (this.searchQuery && this.searchQuery.trim()) {
+        const q = this.searchQuery.trim().toLowerCase();
+        list = list.filter(c =>
+          (c.title || '').toLowerCase().includes(q) ||
+          (c.hook_text || '').toLowerCase().includes(q) ||
+          (c.category || '').toLowerCase().includes(q)
+        );
+      }
+      return list;
+    },
+
+    filterByProject(projectId) {
+      this.clipFilterProjectId = projectId;
+      this.navigate('clips');
+    },
+
+    renderCharts() {
+      if (typeof ApexCharts === 'undefined') return;
+      const barEl = document.getElementById('viralityBarChart');
+      const radEl = document.getElementById('viralityRadialChart');
+      if (!barEl || !radEl) return;
+
+      const textColor = this.darkMode ? '#98A2B3' : '#667085';
+      const gridColor = this.darkMode ? '#1D2939' : '#F2F4F7';
+
+      // 1. TailAdmin Bar Chart (Virality Score per Clip)
+      const topClips = this.allClips.slice(0, 8);
+      const barLabels = topClips.length ? topClips.map((c, i) => `Clip #${i + 1}`) : ['Clip #1', 'Clip #2', 'Clip #3'];
+      const barValues = topClips.length ? topClips.map(c => Number(c.virality_score) || 0) : [0, 0, 0];
+
+      if (this.barChart) this.barChart.destroy();
+      this.barChart = new ApexCharts(barEl, {
+        series: [{ name: 'Viral Score', data: barValues }],
+        chart: {
+          type: 'bar',
+          height: 210,
+          fontFamily: 'Outfit, sans-serif',
+          toolbar: { show: false },
+        },
+        colors: ['#465FFF'],
+        plotOptions: {
+          bar: {
+            horizontal: false,
+            columnWidth: '38%',
+            borderRadius: 6,
+            borderRadiusApplication: 'end',
+          },
+        },
+        dataLabels: { enabled: false },
+        xaxis: {
+          categories: barLabels,
+          axisBorder: { show: false },
+          axisTicks: { show: false },
+          labels: { style: { colors: textColor, fontSize: '12px' } },
+        },
+        yaxis: {
+          min: 0,
+          max: 100,
+          labels: { style: { colors: textColor, fontSize: '12px' } },
+        },
+        grid: {
+          borderColor: gridColor,
+          yaxis: { lines: { show: true } },
+        },
+        tooltip: {
+          theme: this.darkMode ? 'dark' : 'light',
+          y: { formatter: (v) => `${v} / 100` },
+        },
+      });
+      this.barChart.render();
+
+      // 2. TailAdmin Semi-Circle RadialBar Gauge (Average Virality Score)
+      const avg = this.avgViralityScore();
+      if (this.radialChart) this.radialChart.destroy();
+      this.radialChart = new ApexCharts(radEl, {
+        series: [avg],
+        chart: {
+          type: 'radialBar',
+          height: 280,
+          fontFamily: 'Outfit, sans-serif',
+          sparkline: { enabled: true },
+        },
+        plotOptions: {
+          radialBar: {
+            startAngle: -85,
+            endAngle: 85,
+            hollow: { size: '76%' },
+            track: {
+              background: this.darkMode ? '#1D2939' : '#E4E7EC',
+              strokeWidth: '100%',
+              margin: 5,
+            },
+            dataLabels: {
+              name: { show: false },
+              value: {
+                fontSize: '34px',
+                fontWeight: '700',
+                offsetY: -22,
+                color: this.darkMode ? '#FFFFFF' : '#1D2939',
+                formatter: (val) => `${val}%`,
+              },
+            },
+          },
+        },
+        fill: { type: 'solid', colors: ['#465FFF'] },
+        stroke: { lineCap: 'round' },
+      });
+      this.radialChart.render();
     },
 
     playHoverVideo(cardEl) {
@@ -153,32 +352,75 @@ function smartClipsApp() {
       }
     },
 
-    topViralityScore() {
-      if (!this.allClips.length) return 0;
-      return Math.max(...this.allClips.map(c => Number(c.virality_score) || 0));
-    },
-
-    filteredClips() {
-      if (!this.clipFilterProjectId) return this.allClips;
-      return this.allClips.filter(c => c.project_id === this.clipFilterProjectId);
-    },
-
-    filterByProject(projectId) {
-      this.clipFilterProjectId = projectId;
-      this.activeTab = 'clips';
-      this.fetchAllClips();
-    },
-
-    applyClipFilter() {
-      // reactive helper
-    },
-
     openClipStudio(clip) {
-      this.studioClip = clip;
+      const box = clip.facecam_box || { x: 0.72, y: 0.62, w: 0.26, h: 0.34 };
+      this.studioForm = {
+        id: clip.id || '',
+        project_id: clip.project_id || '',
+        title: clip.title || '',
+        hook_text: clip.hook_text || '',
+        caption: clip.caption || '',
+        hashtags: clip.hashtags || '',
+        reason: clip.reason || '',
+        virality_score: Number(clip.virality_score) || 0,
+        start_time: Number(clip.start_time) || 0,
+        end_time: Number(clip.end_time) || 0,
+        duration: Number(clip.duration) || 0,
+        layout_mode: clip.layout_mode || 'gaming_split',
+        subtitle_style: clip.subtitle_style || 'karaoke_yellow',
+        video_url: clip.video_url || '',
+        thumbnail_url: clip.thumbnail_url || '',
+        updated_at: clip.updated_at || '',
+        facecam_box: { x: box.x, y: box.y, w: box.w, h: box.h },
+      };
+      if (this.$refs.studioDialog && !this.$refs.studioDialog.open) {
+        this.$refs.studioDialog.showModal();
+      }
+    },
+
+    closeClipStudio() {
+      if (this.$refs.studioDialog && this.$refs.studioDialog.open) {
+        this.$refs.studioDialog.close();
+      }
+    },
+
+    onStudioDialogClose() {
+      const vid = this.$refs.studioDialog?.querySelector('video');
+      if (vid) vid.pause();
+    },
+
+    openEditModalFromStudio() {
+      const c = this.studioForm;
+      this.closeClipStudio();
+      this.editModal = {
+        clipId: c.id,
+        projectId: c.project_id,
+        title: c.title,
+        hook_text: c.hook_text,
+        caption: c.caption,
+        hashtags: c.hashtags,
+        start_time: Number(c.start_time) || 0,
+        end_time: Number(c.end_time) || 30,
+        layout_mode: c.layout_mode || 'gaming_split',
+        subtitle_style: c.subtitle_style || 'karaoke_yellow',
+        facecam_box: { ...(c.facecam_box || { x: 0.72, y: 0.62, w: 0.26, h: 0.34 }) },
+        dragging: false,
+        dragStartX: 0,
+        dragStartY: 0,
+      };
+      if (this.$refs.editDialog && !this.$refs.editDialog.open) {
+        this.$refs.editDialog.showModal();
+      }
+    },
+
+    closeEditModal() {
+      if (this.$refs.editDialog && this.$refs.editDialog.open) {
+        this.$refs.editDialog.close();
+      }
     },
 
     activePreviewUrl() {
-      const pid = this.editModal.projectId || this.studioClip?.project_id;
+      const pid = this.editModal.projectId || this.studioForm.project_id;
       const proj = this.projects.find(p => p.id === pid);
       return proj?.preview_frame_url || '';
     },
@@ -222,10 +464,6 @@ function smartClipsApp() {
         const res = await fetch('/api/clips');
         const data = await res.json();
         this.allClips = (data.clips || []).sort((a, b) => (b.virality_score || 0) - (a.virality_score || 0));
-        if (this.studioClip) {
-          const fresh = this.allClips.find(c => c.id === this.studioClip.id);
-          if (fresh) this.studioClip = fresh;
-        }
       } catch (e) {}
     },
 
@@ -312,7 +550,7 @@ function smartClipsApp() {
         this.form.youtube_url = '';
         this.inspectedInfo = null;
         await this.fetchProjects();
-        this.activeTab = 'projects';
+        this.navigate('projects');
       } catch (e) {
         this.notify(e.message, 'error');
       } finally {
@@ -325,7 +563,7 @@ function smartClipsApp() {
       this.liveForm.layout_mode = this.form.layout_mode;
       this.liveForm.facecam_preset = this.form.facecam_preset;
       this.liveForm.subtitle_style = this.form.subtitle_style;
-      this.activeTab = 'live';
+      this.navigate('live');
       await this.startLiveMonitor();
     },
 
@@ -344,7 +582,7 @@ function smartClipsApp() {
         if (!res.ok) throw new Error(data.detail || 'Gagal memulai live monitor');
         this.liveForm.youtube_url = '';
         await this.fetchLiveMonitors();
-        this.notify('Real-Time Live Radar aktif!');
+        this.notify('Real-Time Live Monitor aktif!');
       } catch (e) {
         this.notify(e.message, 'error');
       }
@@ -384,17 +622,10 @@ function smartClipsApp() {
         if (!res.ok) throw new Error('Gagal memulai analisis ulang');
         this.notify('AI Viral Director V2 sedang mencari ulang momen & Hook 0:00 terbaik...');
         await this.fetchProjects();
-        this.activeTab = 'projects';
+        this.navigate('projects');
       } catch (e) {
         this.notify(e.message, 'error');
       }
-    },
-
-    async deleteClip(clipId) {
-      if (!confirm('Hapus klip ini?')) return;
-      await fetch(`/api/clips/${clipId}`, { method: 'DELETE' });
-      await Promise.all([this.fetchProjects(), this.fetchAllClips()]);
-      this.notify('Klip dihapus.');
     },
 
     async copyCaption(clip) {
@@ -409,7 +640,7 @@ function smartClipsApp() {
     },
 
     async publishClip(clip, platforms) {
-      if (!clip) return;
+      if (!clip || !clip.id) return;
       this.publishingId = clip.id;
       try {
         await fetch(`/api/clips/${clip.id}`, {
@@ -442,27 +673,6 @@ function smartClipsApp() {
       } finally {
         this.publishingId = null;
       }
-    },
-
-    openEditModal(clip) {
-      const box = clip.facecam_box || { x: 0.72, y: 0.62, w: 0.26, h: 0.34 };
-      this.editModal = {
-        open: true,
-        clipId: clip.id,
-        projectId: clip.project_id,
-        title: clip.title || '',
-        hook_text: clip.hook_text || '',
-        caption: clip.caption || '',
-        hashtags: clip.hashtags || '',
-        start_time: Number(clip.start_time) || 0,
-        end_time: Number(clip.end_time) || 30,
-        layout_mode: clip.layout_mode || 'gaming_split',
-        subtitle_style: clip.subtitle_style || 'karaoke_yellow',
-        facecam_box: { x: box.x, y: box.y, w: box.w, h: box.h },
-        dragging: false,
-        dragStartX: 0,
-        dragStartY: 0,
-      };
     },
 
     applyFacecamPreset(presetKey) {
@@ -524,8 +734,8 @@ function smartClipsApp() {
           }),
         });
         if (!res.ok) throw new Error('Gagal memperbarui klip');
-        this.editModal.open = false;
-        this.notify(rerender ? '🎬 Sedang merender ulang video 9:16...' : 'Perubahan disimpan!');
+        this.closeEditModal();
+        this.notify(rerender ? 'Sedang merender ulang video 9:16...' : 'Perubahan disimpan!');
         await this.fetchAllClips();
       } catch (e) {
         this.notify(e.message, 'error');
