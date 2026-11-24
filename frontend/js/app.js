@@ -1,9 +1,10 @@
 /**
- * Smart-Clips AI Studio — Frontend Controller (Alpine.js)
+ * Smart-Clips AI Studio — Clean SaaS Admin Dashboard Controller (Alpine.js)
  */
 function smartClipsApp() {
   return {
-    activeTab: 'create',
+    activeTab: 'overview',
+    darkMode: true,
     health: {
       gemini_configured: false,
       tiktok_configured: false,
@@ -12,16 +13,16 @@ function smartClipsApp() {
     },
     toast: { show: false, message: '', type: 'success' },
 
-    // Create VOD/Live Form
+    // Create Clip Form
     form: {
       youtube_url: '',
       content_type: 'auto',
-      layout_mode: 'auto',
+      layout_mode: 'gaming_split',
       subtitle_style: 'karaoke_yellow',
       facecam_preset: 'auto',
-      clip_count: 5,
-      min_duration: 20,
-      max_duration: 60,
+      clip_count: 4,
+      min_duration: 25,
+      max_duration: 50,
       hook_banner: true,
       max_video_minutes: '',
     },
@@ -29,7 +30,7 @@ function smartClipsApp() {
     inspectedInfo: null,
     submitting: false,
 
-    // Live Stream Watcher Form & List
+    // Live Stream Monitor
     liveForm: {
       youtube_url: '',
       content_type: 'gaming',
@@ -42,26 +43,30 @@ function smartClipsApp() {
     },
     liveMonitors: [],
 
-    // Projects & Clips
+    // Projects & Clips State
     projects: [],
+    allClips: [],
+    clipFilterProjectId: '',
     selectedProject: null,
     selectedClips: [],
+    studioClip: null,
     publishingId: null,
 
     // Settings
     settings: {},
 
-    // Edit Clip Modal + Visual Facecam Crop Dragging
+    // Edit Modal
     editModal: {
       open: false,
       clipId: null,
+      projectId: null,
       title: '',
       hook_text: '',
       caption: '',
       hashtags: '',
       start_time: 0,
       end_time: 30,
-      layout_mode: 'podcast',
+      layout_mode: 'gaming_split',
       subtitle_style: 'karaoke_yellow',
       facecam_box: { x: 0.72, y: 0.62, w: 0.26, h: 0.34 },
       dragging: false,
@@ -72,28 +77,93 @@ function smartClipsApp() {
     pollTimer: null,
 
     async init() {
+      const savedTheme = localStorage.getItem('sc_theme');
+      if (savedTheme === 'light') {
+        this.darkMode = false;
+        document.documentElement.classList.remove('dark');
+      }
+
       await Promise.all([
         this.fetchHealth(),
         this.fetchProjects(),
+        this.fetchAllClips(),
         this.fetchLiveMonitors(),
+        this.fetchSettings(),
       ]);
 
-      // Poll active jobs, rendering clips, and live monitors every 3 seconds
       this.pollTimer = setInterval(async () => {
         const hasActiveProj = this.projects.some(p => ['queued', 'processing', 'live_watching'].includes(p.status));
-        const hasRenderingClip = this.selectedClips.some(c => c.status === 'rendering');
+        const hasRenderingClip = this.allClips.some(c => c.status === 'rendering');
         const hasActiveLive = this.liveMonitors.some(m => m.status === 'running');
 
         if (hasActiveProj || hasRenderingClip) {
-          await this.fetchProjects();
-          if (this.selectedProject) {
-            await this.openProject(this.selectedProject.id, true);
-          }
+          await Promise.all([this.fetchProjects(), this.fetchAllClips()]);
         }
         if (hasActiveLive || this.activeTab === 'live') {
           await this.fetchLiveMonitors();
         }
       }, 3000);
+    },
+
+    toggleTheme() {
+      this.darkMode = !this.darkMode;
+      if (this.darkMode) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('sc_theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('sc_theme', 'light');
+      }
+    },
+
+    navigate(tab) {
+      this.activeTab = tab;
+      if (tab === 'projects' || tab === 'overview') this.fetchProjects();
+      if (tab === 'clips' || tab === 'overview') this.fetchAllClips();
+      if (tab === 'settings') this.fetchSettings();
+      if (tab === 'live') this.fetchLiveMonitors();
+    },
+
+    pageTitle() {
+      const titles = {
+        overview: '📊 Dashboard Overview',
+        create: '➕ Buat Klip Baru dari YouTube',
+        projects: '📁 Manajemen Proyek Video',
+        clips: '🎬 Galeri Klip 9:16 Siap Posting',
+        live: '🔴 Live Stream Auto-Clipper',
+        settings: '⚙️ Pengaturan AI & Integrasi Sosmed',
+      };
+      return titles[this.activeTab] || 'Smart-Clips AI';
+    },
+
+    topViralityScore() {
+      if (!this.allClips.length) return 0;
+      return Math.max(...this.allClips.map(c => Number(c.virality_score) || 0));
+    },
+
+    filteredClips() {
+      if (!this.clipFilterProjectId) return this.allClips;
+      return this.allClips.filter(c => c.project_id === this.clipFilterProjectId);
+    },
+
+    filterByProject(projectId) {
+      this.clipFilterProjectId = projectId;
+      this.activeTab = 'clips';
+      this.fetchAllClips();
+    },
+
+    applyClipFilter() {
+      // reactive helper
+    },
+
+    openClipStudio(clip) {
+      this.studioClip = clip;
+    },
+
+    activePreviewUrl() {
+      const pid = this.editModal.projectId || this.studioClip?.project_id;
+      const proj = this.projects.find(p => p.id === pid);
+      return proj?.preview_frame_url || '';
     },
 
     notify(message, type = 'success') {
@@ -130,6 +200,18 @@ function smartClipsApp() {
       } catch (e) {}
     },
 
+    async fetchAllClips() {
+      try {
+        const res = await fetch('/api/clips');
+        const data = await res.json();
+        this.allClips = (data.clips || []).sort((a, b) => (b.virality_score || 0) - (a.virality_score || 0));
+        if (this.studioClip) {
+          const fresh = this.allClips.find(c => c.id === this.studioClip.id);
+          if (fresh) this.studioClip = fresh;
+        }
+      } catch (e) {}
+    },
+
     async fetchLiveMonitors() {
       try {
         const res = await fetch('/api/live-monitors');
@@ -155,7 +237,7 @@ function smartClipsApp() {
         });
         if (!res.ok) throw new Error('Gagal menyimpan pengaturan');
         await this.fetchHealth();
-        this.notify('Pengaturan AI & Sosmed berhasil disimpan!');
+        this.notify('Pengaturan berhasil disimpan!');
       } catch (e) {
         this.notify(e.message, 'error');
       }
@@ -174,7 +256,7 @@ function smartClipsApp() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'URL tidak valid');
         this.inspectedInfo = data.info;
-        if (this.form.layout_mode === 'auto' && data.info.suggested_layout) {
+        if (data.info.suggested_layout) {
           this.form.layout_mode = data.info.suggested_layout;
         }
         this.notify(`Video ditemukan: ${data.info.title.slice(0, 45)}`);
@@ -195,9 +277,9 @@ function smartClipsApp() {
           layout_mode: this.form.layout_mode,
           subtitle_style: this.form.subtitle_style,
           facecam_preset: this.form.facecam_preset,
-          clip_count: Number(this.form.clip_count) || 5,
-          min_duration: Number(this.form.min_duration) || 20,
-          max_duration: Number(this.form.max_duration) || 60,
+          clip_count: Number(this.form.clip_count) || 4,
+          min_duration: Number(this.form.min_duration) || 25,
+          max_duration: Number(this.form.max_duration) || 50,
           hook_banner: Boolean(this.form.hook_banner),
           max_video_minutes: this.form.max_video_minutes ? Number(this.form.max_video_minutes) : null,
         };
@@ -209,10 +291,11 @@ function smartClipsApp() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Gagal membuat proyek');
 
-        this.notify('Pipeline dimulai! Klip sedang diproses di background...');
+        this.notify('🚀 Proyek dimulai! Pantau progresnya di halaman Daftar Proyek.');
+        this.form.youtube_url = '';
+        this.inspectedInfo = null;
         await this.fetchProjects();
         this.activeTab = 'projects';
-        await this.openProject(data.project.id);
       } catch (e) {
         this.notify(e.message, 'error');
       } finally {
@@ -222,7 +305,7 @@ function smartClipsApp() {
 
     async startLiveWatcherFromForm() {
       this.liveForm.youtube_url = this.form.youtube_url.trim();
-      this.liveForm.layout_mode = this.form.layout_mode === 'auto' ? 'gaming_split' : this.form.layout_mode;
+      this.liveForm.layout_mode = this.form.layout_mode;
       this.liveForm.facecam_preset = this.form.facecam_preset;
       this.liveForm.subtitle_style = this.form.subtitle_style;
       this.activeTab = 'live';
@@ -244,7 +327,7 @@ function smartClipsApp() {
         if (!res.ok) throw new Error(data.detail || 'Gagal memulai live monitor');
         this.liveForm.youtube_url = '';
         await this.fetchLiveMonitors();
-        this.notify('🔴 Real-Time Live Watcher aktif! Klip akan muncul otomatis.');
+        this.notify('🔴 Real-Time Live Monitor aktif!');
       } catch (e) {
         this.notify(e.message, 'error');
       }
@@ -260,30 +343,10 @@ function smartClipsApp() {
       }
     },
 
-    async openProject(projectId, silent = false) {
-      try {
-        const res = await fetch(`/api/projects/${projectId}`);
-        if (!res.ok) {
-          if (!silent) this.notify('Proyek belum siap atau tidak ditemukan', 'error');
-          return;
-        }
-        const data = await res.json();
-        this.selectedProject = data.project;
-        this.selectedClips = data.clips || [];
-        if (!silent) this.activeTab = 'projects';
-      } catch (e) {
-        if (!silent) this.notify('Gagal memuat detail proyek', 'error');
-      }
-    },
-
     async deleteProject(projectId) {
       if (!confirm('Hapus proyek beserta semua klip videonya?')) return;
       await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
-      if (this.selectedProject?.id === projectId) {
-        this.selectedProject = null;
-        this.selectedClips = [];
-      }
-      await this.fetchProjects();
+      await Promise.all([this.fetchProjects(), this.fetchAllClips()]);
       this.notify('Proyek dihapus.');
     },
 
@@ -291,9 +354,8 @@ function smartClipsApp() {
       try {
         const res = await fetch(`/api/projects/${projectId}/retry`, { method: 'POST' });
         if (!res.ok) throw new Error('Gagal memulai ulang proyek');
-        this.notify('⚡ Turbo Mode dimulai! Hanya mengunduh audio ringan + klip HD terpilih.');
+        this.notify('⚡ Turbo Mode dimulai!');
         await this.fetchProjects();
-        await this.openProject(projectId, true);
       } catch (e) {
         this.notify(e.message, 'error');
       }
@@ -305,7 +367,7 @@ function smartClipsApp() {
         if (!res.ok) throw new Error('Gagal memulai analisis ulang');
         this.notify('🎯 AI Viral Director V2 sedang mencari ulang momen & Hook 0:00 terbaik...');
         await this.fetchProjects();
-        await this.openProject(projectId, true);
+        this.activeTab = 'projects';
       } catch (e) {
         this.notify(e.message, 'error');
       }
@@ -314,24 +376,25 @@ function smartClipsApp() {
     async deleteClip(clipId) {
       if (!confirm('Hapus klip ini?')) return;
       await fetch(`/api/clips/${clipId}`, { method: 'DELETE' });
-      if (this.selectedProject) await this.openProject(this.selectedProject.id, true);
+      await Promise.all([this.fetchProjects(), this.fetchAllClips()]);
       this.notify('Klip dihapus.');
     },
 
     async copyCaption(clip) {
+      if (!clip) return;
       const fullText = `${clip.caption || clip.title}\n\n${clip.hashtags || ''}`.trim();
       try {
         await navigator.clipboard.writeText(fullText);
-        this.notify('Caption + Hashtag berhasil disalin ke clipboard!');
+        this.notify('Caption + Hashtag berhasil disalin!');
       } catch (e) {
-        this.notify('Gagal menyalin otomatis, silakan blok teks manual.', 'error');
+        this.notify('Gagal menyalin otomatis.', 'error');
       }
     },
 
     async publishClip(clip, platforms) {
+      if (!clip) return;
       this.publishingId = clip.id;
       try {
-        // Save any edited caption/hashtags first
         await fetch(`/api/clips/${clip.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -355,8 +418,8 @@ function smartClipsApp() {
             messages.push(`${plat.toUpperCase()}: ${r.error}`);
           }
         }
-        this.notify(messages.join(' | ') || 'Proses posting selesai', hasError ? 'error' : 'success');
-        if (this.selectedProject) await this.openProject(this.selectedProject.id, true);
+        this.notify(messages.join(' | ') || 'Proses selesai', hasError ? 'error' : 'success');
+        await this.fetchAllClips();
       } catch (e) {
         this.notify('Gagal menghubungi API posting: ' + e.message, 'error');
       } finally {
@@ -364,20 +427,19 @@ function smartClipsApp() {
       }
     },
 
-    // ---- Edit Clip & Interactive Visual Facecam Cropper ----
-
     openEditModal(clip) {
       const box = clip.facecam_box || { x: 0.72, y: 0.62, w: 0.26, h: 0.34 };
       this.editModal = {
         open: true,
         clipId: clip.id,
+        projectId: clip.project_id,
         title: clip.title || '',
         hook_text: clip.hook_text || '',
         caption: clip.caption || '',
         hashtags: clip.hashtags || '',
         start_time: Number(clip.start_time) || 0,
         end_time: Number(clip.end_time) || 30,
-        layout_mode: clip.layout_mode || 'podcast',
+        layout_mode: clip.layout_mode || 'gaming_split',
         subtitle_style: clip.subtitle_style || 'karaoke_yellow',
         facecam_box: { x: box.x, y: box.y, w: box.w, h: box.h },
         dragging: false,
@@ -446,12 +508,11 @@ function smartClipsApp() {
         });
         if (!res.ok) throw new Error('Gagal memperbarui klip');
         this.editModal.open = false;
-        this.notify(rerender ? 'Sedang merender ulang video 9:16...' : 'Perubahan disimpan!');
-        if (this.selectedProject) await this.openProject(this.selectedProject.id, true);
+        this.notify(rerender ? '🎬 Sedang merender ulang video 9:16...' : 'Perubahan disimpan!');
+        await this.fetchAllClips();
       } catch (e) {
         this.notify(e.message, 'error');
       }
     },
   };
 }
-
