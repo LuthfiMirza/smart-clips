@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Smart-Clips AI — Admin Dashboard</title>
+  <title>Smart-Clips AI — Next-Gen Video Clipping Studio</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = { darkMode: 'class' };
@@ -11,664 +11,770 @@
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   <link rel="stylesheet" href="/static/css/custom.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
-<body x-data="smartClipsApp()" x-init="init()" class="antialiased selection:bg-indigo-600 selection:text-white">
+<body x-data="smartClipsApp()" x-init="init()" class="antialiased selection:bg-violet-600 selection:text-white">
 
-  <!-- Toast Notification -->
+  <!-- Toast Notification (Pure SVG Icon) -->
   <div x-show="toast.show" x-transition
-       class="fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-xl shadow-2xl border flex items-center gap-3 text-sm font-medium"
-       :class="toast.type === 'error' ? 'bg-red-600 text-white border-red-500' : 'bg-indigo-600 text-white border-indigo-500'"
+       class="fixed bottom-6 right-6 z-50 max-w-md px-4 py-3.5 rounded-xl shadow-2xl border flex items-center gap-3 text-xs font-semibold backdrop-blur-xl"
+       :class="toast.type === 'error' ? 'bg-red-950/90 text-red-100 border-red-500/40' : 'bg-[#121626]/95 text-white border-violet-500/40'"
        style="display:none;">
-    <span x-text="toast.type === 'error' ? '⚠️' : '✅'"></span>
+    <template x-if="toast.type !== 'error'">
+      <svg class="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+    </template>
+    <template x-if="toast.type === 'error'">
+      <svg class="w-4 h-4 text-red-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+    </template>
     <span x-text="toast.message"></span>
   </div>
 
   <div class="flex min-h-screen">
 
-    <!-- ==================== FIXED LEFT SIDEBAR (ADMIN NAVIGATION) ==================== -->
-    <aside class="admin-sidebar w-64 shrink-0 border-r flex flex-col justify-between sticky top-0 h-screen z-30">
+    <!-- ==================== FIXED LEFT SIDEBAR (OPUSCLIP / RUNWAY STYLE) ==================== -->
+    <aside class="studio-sidebar w-64 shrink-0 flex flex-col justify-between sticky top-0 h-screen z-30 select-none">
       <div>
-        <!-- Brand Logo -->
-        <div class="h-16 px-5 flex items-center gap-3 border-b border-inherit">
-          <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-sm shadow">
-            SC
-          </div>
-          <div>
-            <div class="font-bold text-sm tracking-tight flex items-center gap-1.5">
-              Smart-Clips <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-400">V2</span>
+        <!-- Brand Header -->
+        <div class="h-16 px-5 flex items-center justify-between border-b border-white/[0.06]">
+          <div class="flex items-center gap-3 cursor-pointer" @click="navigate('overview')">
+            <div class="w-9 h-9 rounded-xl btn-studio-primary flex items-center justify-center shadow-lg">
+              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <polygon points="23 7 16 12 23 17 23 7"/><rect width="15" height="14" x="1" y="5" rx="2" ry="2"/>
+              </svg>
             </div>
-            <div class="text-[11px] text-muted">AI Video Clipper Admin</div>
+            <div>
+              <div class="font-extrabold text-sm tracking-tight flex items-center gap-1.5">
+                SmartClips
+                <span class="font-mono-code text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-500/15 text-violet-300 border border-violet-500/30">PRO</span>
+              </div>
+              <div class="text-[11px] text-slate-400">AI Viral Studio</div>
+            </div>
           </div>
         </div>
 
-        <!-- Menu Groups -->
+        <!-- Quick New Clip CTA inside Sidebar -->
+        <div class="p-3.5 pb-1">
+          <button @click="navigate('create')"
+                  class="w-full py-2.5 px-3.5 rounded-xl btn-studio-primary text-xs font-bold flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            <span>New Viral Project</span>
+          </button>
+        </div>
+
+        <!-- Navigation Menu (100% Vector SVGs) -->
         <div class="p-3 space-y-6">
           <div>
-            <div class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">Menu Utama</div>
+            <div class="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">Workspace</div>
             <nav class="space-y-1">
               <button @click="navigate('overview')"
-                      :class="activeTab === 'overview' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-muted hover:bg-slate-500/10'"
-                      class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition">
-                <span class="flex items-center gap-2.5">📊 <span>Overview</span></span>
+                      :class="activeTab === 'overview' ? 'nav-item-active' : ''"
+                      class="nav-item w-full">
+                <span class="flex items-center gap-3">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                  <span>Overview</span>
+                </span>
               </button>
 
               <button @click="navigate('create')"
-                      :class="activeTab === 'create' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-muted hover:bg-slate-500/10'"
-                      class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition">
-                <span class="flex items-center gap-2.5">➕ <span>Buat Klip Baru</span></span>
-              </button>
-
-              <button @click="navigate('projects')"
-                      :class="activeTab === 'projects' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-muted hover:bg-slate-500/10'"
-                      class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition">
-                <span class="flex items-center gap-2.5">📁 <span>Daftar Proyek</span></span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-slate-500/15" x-text="projects.length"></span>
+                      :class="activeTab === 'create' ? 'nav-item-active' : ''"
+                      class="nav-item w-full">
+                <span class="flex items-center gap-3">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                  <span>AI Clip Generator</span>
+                </span>
               </button>
 
               <button @click="navigate('clips')"
-                      :class="activeTab === 'clips' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-muted hover:bg-slate-500/10'"
-                      class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition">
-                <span class="flex items-center gap-2.5">🎬 <span>Galeri Klip 9:16</span></span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-slate-500/15" x-text="allClips.length"></span>
+                      :class="activeTab === 'clips' ? 'nav-item-active' : ''"
+                      class="nav-item w-full">
+                <span class="flex items-center gap-3">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></svg>
+                  <span>Clip Library (9:16)</span>
+                </span>
+                <span class="font-mono-code text-[11px] px-2 py-0.5 rounded-md bg-white/[0.06] text-slate-300" x-text="allClips.length"></span>
+              </button>
+
+              <button @click="navigate('projects')"
+                      :class="activeTab === 'projects' ? 'nav-item-active' : ''"
+                      class="nav-item w-full">
+                <span class="flex items-center gap-3">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+                  <span>Source Projects</span>
+                </span>
+                <span class="font-mono-code text-[11px] px-2 py-0.5 rounded-md bg-white/[0.06] text-slate-300" x-text="projects.length"></span>
               </button>
 
               <button @click="navigate('live')"
-                      :class="activeTab === 'live' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-muted hover:bg-slate-500/10'"
-                      class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition">
-                <span class="flex items-center gap-2.5">🔴 <span>Live Stream Monitor</span></span>
-                <span x-show="activeLiveCount() > 0" class="text-[11px] px-2 py-0.5 rounded-full bg-red-500 text-white font-bold" x-text="activeLiveCount()"></span>
+                      :class="activeTab === 'live' ? 'nav-item-active' : ''"
+                      class="nav-item w-full">
+                <span class="flex items-center gap-3">
+                  <svg class="w-4 h-4 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+                  <span>Live Stream Radar</span>
+                </span>
+                <span x-show="activeLiveCount() > 0" class="font-mono-code text-[10px] px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold" x-text="activeLiveCount()"></span>
               </button>
             </nav>
           </div>
 
           <div>
-            <div class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">Sistem &amp; Integrasi</div>
+            <div class="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">Configuration</div>
             <nav class="space-y-1">
               <button @click="navigate('settings')"
-                      :class="activeTab === 'settings' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'text-muted hover:bg-slate-500/10'"
-                      class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition">
-                <span class="flex items-center gap-2.5">⚙️ <span>Pengaturan &amp; API</span></span>
+                      :class="activeTab === 'settings' ? 'nav-item-active' : ''"
+                      class="nav-item w-full">
+                <span class="flex items-center gap-3">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <span>API &amp; Social Auth</span>
+                </span>
               </button>
             </nav>
           </div>
         </div>
       </div>
 
-      <!-- Sidebar Footer: System Status Cards -->
-      <div class="p-4 border-t border-inherit space-y-2 text-xs">
+      <!-- Engine Telemetry Card in Sidebar Footer -->
+      <div class="p-3.5 m-3 rounded-xl studio-subcard space-y-2.5">
         <div class="flex items-center justify-between">
-          <span class="text-muted">Engine Deteksi</span>
-          <span class="font-semibold"
-                :class="health.gemini_configured ? 'text-emerald-400' : 'text-indigo-400'"
-                x-text="health.gemini_configured ? 'Gemini 4 + V2' : 'Viral Hook V2'"></span>
+          <span class="text-[11px] font-semibold text-slate-400">AI Director Engine</span>
+          <span class="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span x-text="health.gemini_configured ? 'Gemini 4' : 'Hook V2'"></span>
+          </span>
         </div>
-        <div class="flex items-center justify-between">
-          <span class="text-muted">TikTok / IG API</span>
-          <span class="font-semibold"
-                :class="(health.tiktok_configured || health.instagram_configured) ? 'text-emerald-400' : 'text-muted'"
-                x-text="(health.tiktok_configured || health.instagram_configured) ? 'Terhubung' : 'Mode Manual'"></span>
+        <div class="flex items-center justify-between text-[11px]">
+          <span class="text-slate-500">Hover Preview</span>
+          <span class="font-mono-code text-violet-400 font-semibold">Auto-Play</span>
         </div>
       </div>
     </aside>
 
-    <!-- ==================== MAIN CONTENT AREA ==================== -->
+    <!-- ==================== MAIN WORKSPACE AREA ==================== -->
     <div class="flex-1 flex flex-col min-w-0">
 
-      <!-- Sticky Top Header -->
-      <header class="admin-header h-16 px-6 border-b backdrop-blur-md sticky top-0 z-20 flex items-center justify-between gap-4">
-        <div>
-          <h1 class="font-bold text-base sm:text-lg" x-text="pageTitle()"></h1>
+      <!-- Sticky Top Studio Bar -->
+      <header class="studio-header h-16 px-7 sticky top-0 z-20 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <h1 class="font-extrabold text-base sm:text-lg tracking-tight" x-text="pageTitle()"></h1>
+          <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-white/[0.04] border border-white/[0.07] text-slate-400">
+            <svg class="w-3 h-3 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Turbo 1080×1920 Pipeline</span>
+          </span>
         </div>
 
         <div class="flex items-center gap-3">
-          <!-- Theme Toggle (Dark / Light) -->
+          <!-- Theme Switcher (SVG Sun/Moon) -->
           <button @click="toggleTheme()"
-                  class="px-3 py-1.5 rounded-lg border border-slate-500/20 hover:bg-slate-500/10 text-xs font-semibold flex items-center gap-1.5 transition">
-            <span x-text="darkMode ? '☀️ Light' : '🌙 Dark'"></span>
+                  class="p-2 rounded-xl border border-white/[0.08] hover:bg-white/[0.05] text-slate-300 transition"
+                  title="Switch Dark / Light Theme">
+            <template x-if="darkMode">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+            </template>
+            <template x-if="!darkMode">
+              <svg class="w-4 h-4 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            </template>
           </button>
 
-          <!-- Primary CTA -->
+          <!-- Create Quick CTA -->
           <button x-show="activeTab !== 'create'" @click="navigate('create')"
-                  class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-sm transition">
-            + Buat Klip Baru
+                  class="px-4 py-2 rounded-xl btn-studio-primary text-xs flex items-center gap-2">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            <span>Paste YouTube Link</span>
           </button>
         </div>
       </header>
 
-      <!-- Page Container -->
-      <main class="p-6 max-w-7xl w-full mx-auto space-y-6">
+      <!-- Workspace Content Container -->
+      <main class="p-7 max-w-[1440px] w-full mx-auto space-y-7">
 
-        <!-- ==================== PAGE 1: OVERVIEW ==================== -->
-        <div x-show="activeTab === 'overview'" x-transition.opacity class="space-y-6">
-          <!-- 4 KPI Stat Cards -->
+        <!-- ==================== PAGE 1: OVERVIEW (BENTO GRID + HOVER AUTO-PLAY) ==================== -->
+        <div x-show="activeTab === 'overview'" x-transition.opacity class="space-y-7">
+
+          <!-- 4 Bento KPI Cards with Vector Icons -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="admin-card rounded-xl p-5">
-              <div class="text-xs font-medium text-muted">Total Proyek Video</div>
-              <div class="text-2xl font-extrabold mt-1" x-text="projects.length"></div>
-              <div class="text-[11px] text-emerald-500 mt-1" x-text="projects.filter(p => p.status === 'completed').length + ' proyek selesai'"></div>
+            <div class="bento-card rounded-2xl p-5 flex items-start justify-between">
+              <div>
+                <div class="text-xs font-semibold text-slate-400">Rendered 9:16 Shorts</div>
+                <div class="font-mono-code text-3xl font-extrabold mt-2" x-text="allClips.filter(c => c.status === 'ready').length"></div>
+                <div class="text-[11px] text-emerald-400 font-medium mt-1.5 flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                  <span>H.264 1080×1920 Ready</span>
+                </div>
+              </div>
+              <div class="w-10 h-10 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center text-violet-400">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 8 6 4-6 4Z"/></svg>
+              </div>
             </div>
-            <div class="admin-card rounded-xl p-5">
-              <div class="text-xs font-medium text-muted">Total Klip 9:16 Siap Post</div>
-              <div class="text-2xl font-extrabold mt-1" x-text="allClips.filter(c => c.status === 'ready').length"></div>
-              <div class="text-[11px] text-indigo-400 mt-1">Format 1080×1920 + Karaoke</div>
+
+            <div class="bento-card rounded-2xl p-5 flex items-start justify-between">
+              <div>
+                <div class="text-xs font-semibold text-slate-400">Peak Virality Score</div>
+                <div class="font-mono-code text-3xl font-extrabold mt-2 text-emerald-400" x-text="topViralityScore()"></div>
+                <div class="text-[11px] text-slate-400 mt-1.5">0:00 Hook-Snapping V2</div>
+              </div>
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              </div>
             </div>
-            <div class="admin-card rounded-xl p-5">
-              <div class="text-xs font-medium text-muted">Skor Viral Tertinggi</div>
-              <div class="text-2xl font-extrabold mt-1 text-amber-500" x-text="topViralityScore() + '/100'"></div>
-              <div class="text-[11px] text-muted mt-1">Hook 0:00 Snapping Aktif</div>
+
+            <div class="bento-card rounded-2xl p-5 flex items-start justify-between">
+              <div>
+                <div class="text-xs font-semibold text-slate-400">Source VODs &amp; Streams</div>
+                <div class="font-mono-code text-3xl font-extrabold mt-2" x-text="projects.length"></div>
+                <div class="text-[11px] text-cyan-400 mt-1.5" x-text="projects.filter(p => p.status === 'completed').length + ' completed pipelines'"></div>
+              </div>
+              <div class="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center text-cyan-400">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </div>
             </div>
-            <div class="admin-card rounded-xl p-5">
-              <div class="text-xs font-medium text-muted">Live Stream Aktif</div>
-              <div class="text-2xl font-extrabold mt-1" x-text="activeLiveCount()"></div>
-              <div class="text-[11px] text-muted mt-1">Pemantau rolling-chunk</div>
+
+            <div class="bento-card rounded-2xl p-5 flex items-start justify-between">
+              <div>
+                <div class="text-xs font-semibold text-slate-400">Live Stream Radar</div>
+                <div class="font-mono-code text-3xl font-extrabold mt-2" x-text="activeLiveCount()"></div>
+                <div class="text-[11px] text-slate-400 mt-1.5">Rolling chunk monitors</div>
+              </div>
+              <div class="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/25 flex items-center justify-center text-rose-400">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49"/></svg>
+              </div>
             </div>
           </div>
 
-          <!-- Top Viral Clips Preview Row -->
-          <div class="admin-card rounded-xl p-5" x-show="allClips.length > 0">
-            <div class="flex items-center justify-between mb-4">
+          <!-- Top Viral Clips Showcase (OpusClip 3.0 Cards with Circular Score Ring & Hover Auto-Play) -->
+          <div class="space-y-4" x-show="allClips.length > 0">
+            <div class="flex items-center justify-between">
               <div>
-                <h2 class="font-bold text-base">🔥 Klip Skor Viral Tertinggi</h2>
-                <p class="text-xs text-muted">Klik kartu klip untuk memutar video 9:16, menyalin caption, atau memposting ke TikTok &amp; IG.</p>
+                <h2 class="text-base font-extrabold tracking-tight">Top Ranked Viral Shorts</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Arahkan mouse ke kartu klip untuk <b>Auto-Play Preview 9:16</b>, atau klik untuk membuka Studio Inspector.</p>
               </div>
-              <button @click="navigate('clips')" class="text-xs font-semibold text-indigo-400 hover:underline">
-                Lihat Semua Galeri (<span x-text="allClips.length"></span>) &rarr;
+              <button @click="navigate('clips')" class="text-xs font-bold text-violet-400 hover:text-violet-300 flex items-center gap-1.5">
+                <span>Explore All Clips (<span x-text="allClips.length"></span>)</span>
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </button>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               <template x-for="clip in allClips.slice(0, 4)" :key="clip.id">
-                <div @click="openClipStudio(clip)" class="admin-subcard rounded-xl overflow-hidden cursor-pointer hover:border-indigo-500 transition group flex flex-col">
-                  <div class="aspect-[9/14] bg-black relative overflow-hidden">
-                    <img x-show="clip.thumbnail_url" :src="clip.thumbnail_url" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="Thumb" />
-                    <div class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/80 text-amber-400 font-extrabold text-xs border border-amber-400/30"
-                         x-text="'🔥 ' + clip.virality_score"></div>
-                    <div class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/75 text-white font-semibold text-[11px]"
+                <div class="bento-card bento-card-interactive rounded-2xl overflow-hidden flex flex-col justify-between group"
+                     @mouseenter="playHoverVideo($el)"
+                     @mouseleave="stopHoverVideo($el)">
+                  <!-- 9:16 Stage with Hover Video + Circular Virality Gauge -->
+                  <div class="aspect-[9/15] bg-black relative overflow-hidden cursor-pointer" @click="openClipStudio(clip)">
+                    <img x-show="clip.thumbnail_url" :src="clip.thumbnail_url"
+                         class="w-full h-full object-cover group-hover:scale-105 transition duration-500" alt="Clip Poster" />
+
+                    <!-- Hover Auto-Play Video Element -->
+                    <template x-if="clip.video_url">
+                      <video :src="clip.video_url" muted loop playsinline preload="none"
+                             class="hover-preview-video absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-300"></video>
+                    </template>
+
+                    <!-- Top Left: Circular SVG Virality Score Gauge -->
+                    <div class="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/10">
+                      <div class="relative w-8 h-8 flex items-center justify-center">
+                        <svg class="w-8 h-8" viewBox="0 0 36 36">
+                          <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3.2"></circle>
+                          <circle class="score-ring-circle" cx="18" cy="18" r="15" fill="none"
+                                  :stroke="clip.virality_score >= 88 ? '#10b981' : '#f59e0b'"
+                                  stroke-width="3.2"
+                                  stroke-dasharray="94.2"
+                                  :stroke-dashoffset="94.2 - (94.2 * (clip.virality_score || 80)) / 100"
+                                  stroke-linecap="round"></circle>
+                        </svg>
+                        <span class="font-mono-code text-[11px] font-extrabold text-white absolute" x-text="clip.virality_score"></span>
+                      </div>
+                      <div class="leading-none pr-1">
+                        <div class="text-[9px] uppercase tracking-wider font-bold text-slate-400">VIRAL</div>
+                        <div class="text-[10px] font-bold text-emerald-400">SCORE</div>
+                      </div>
+                    </div>
+
+                    <!-- Top Right: Monospace Duration Pill -->
+                    <div class="absolute top-3 right-3 font-mono-code text-[11px] font-bold px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md text-white border border-white/10"
                          x-text="Math.round(clip.duration) + 's'"></div>
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end p-3">
-                      <span class="text-[10px] font-extrabold uppercase tracking-wider text-yellow-300" x-text="clip.hook_text"></span>
-                      <h3 class="text-xs font-bold text-white line-clamp-2 mt-0.5" x-text="clip.title"></h3>
+
+                    <!-- Bottom Overlay: Hook Banner & Title -->
+                    <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/75 to-transparent p-4 pt-12">
+                      <div class="inline-block px-2 py-0.5 rounded bg-amber-400 text-black font-extrabold text-[10px] uppercase tracking-wide mb-1.5"
+                           x-text="clip.hook_text || 'VIRAL HOOK'"></div>
+                      <h3 class="font-bold text-xs sm:text-sm text-white line-clamp-2 leading-snug" x-text="clip.title"></h3>
                     </div>
                   </div>
-                  <div class="p-2.5 flex items-center justify-between text-[11px]">
-                    <span class="text-muted truncate" x-text="formatDuration(clip.start_time) + ' - ' + formatDuration(clip.end_time)"></span>
-                    <span class="font-bold text-indigo-400 group-hover:translate-x-0.5 transition">Buka Studio &rarr;</span>
+
+                  <!-- Footer Action Bar (Pure SVG Buttons) -->
+                  <div class="p-3 bg-[#080a12]/90 border-t border-white/[0.06] flex items-center justify-between gap-2">
+                    <span class="font-mono-code text-[11px] text-slate-400" x-text="formatDuration(clip.start_time) + ' - ' + formatDuration(clip.end_time)"></span>
+                    <div class="flex items-center gap-1.5">
+                      <button @click="copyCaption(clip)" title="Copy Caption & Hashtags"
+                              class="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.12] text-slate-300 transition">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                      </button>
+                      <a :href="'/api/clips/' + clip.id + '/download'" title="Download 1080x1920 MP4"
+                         class="p-2 rounded-lg bg-white/[0.05] hover:bg-emerald-500/20 text-emerald-400 transition">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                      </a>
+                      <button @click="openClipStudio(clip)"
+                              class="px-3 py-1.5 rounded-lg btn-studio-primary text-xs font-bold">
+                        Studio
+                      </button>
+                    </div>
                   </div>
                 </div>
               </template>
             </div>
           </div>
 
-          <!-- Recent Projects Table -->
-          <div class="admin-card rounded-xl overflow-hidden">
-            <div class="p-5 border-b border-inherit flex items-center justify-between">
+          <!-- Active & Recent Source Projects Bento Table -->
+          <div class="bento-card rounded-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
               <div>
-                <h2 class="font-bold text-base">Proyek Terbaru</h2>
-                <p class="text-xs text-muted">Status pemrosesan video YouTube Anda.</p>
+                <h2 class="font-bold text-sm">Source YouTube Pipelines</h2>
+                <p class="text-xs text-slate-400">Daftar proyek VOD &amp; Live Stream yang telah diproses oleh AI Director V2.</p>
               </div>
-              <button @click="navigate('projects')" class="text-xs font-semibold text-indigo-400 hover:underline">Kelola Proyek &rarr;</button>
+              <button @click="navigate('projects')" class="text-xs font-bold text-violet-400 hover:text-violet-300">
+                Manage All &rarr;
+              </button>
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr class="border-b border-inherit text-xs text-muted uppercase">
-                    <th class="py-3 px-4">Video YouTube</th>
-                    <th class="py-3 px-4">Mode</th>
-                    <th class="py-3 px-4">Status</th>
-                    <th class="py-3 px-4">Klip</th>
-                    <th class="py-3 px-4 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-500/10">
-                  <template x-for="p in projects.slice(0, 5)" :key="p.id">
-                    <tr class="hover:bg-slate-500/5">
-                      <td class="py-3 px-4 max-w-xs">
-                        <div class="font-semibold truncate" x-text="p.title || p.youtube_url"></div>
-                        <div class="text-xs text-muted" x-text="(p.channel || 'YouTube') + (p.duration ? ' • ' + formatDuration(p.duration) : '')"></div>
-                      </td>
-                      <td class="py-3 px-4">
-                        <span class="px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/10 text-indigo-400" x-text="p.layout_mode"></span>
-                      </td>
-                      <td class="py-3 px-4">
-                        <div class="flex items-center gap-2">
-                          <span class="text-xs font-semibold"
-                                :class="p.status === 'completed' ? 'text-emerald-500' : (p.status === 'failed' ? 'text-red-500' : 'text-amber-400')"
-                                x-text="p.status === 'completed' ? 'Selesai' : (p.status === 'failed' ? 'Gagal' : p.progress + '%')"></span>
-                        </div>
-                        <div class="text-[11px] text-muted truncate max-w-[220px]" x-text="p.status_message"></div>
-                      </td>
-                      <td class="py-3 px-4 font-bold" x-text="p.clip_count || 0"></td>
-                      <td class="py-3 px-4 text-right space-x-2">
-                        <button @click="filterByProject(p.id)" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold">
-                          Lihat Klip
-                        </button>
-                      </td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
+            <div class="divide-y divide-white/[0.05]">
+              <template x-for="p in projects.slice(0, 5)" :key="p.id">
+                <div class="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/[0.02] transition">
+                  <div class="flex items-center gap-4 min-w-0">
+                    <div class="w-24 h-14 rounded-xl bg-slate-900 overflow-hidden shrink-0 border border-white/10 relative">
+                      <img x-show="p.thumbnail_url" :src="p.thumbnail_url" class="w-full h-full object-cover" alt="Thumb" />
+                      <span x-show="p.duration > 0" class="font-mono-code absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/85 text-[10px] text-white font-bold"
+                            x-text="formatDuration(p.duration)"></span>
+                    </div>
+                    <div class="min-w-0">
+                      <div class="font-bold text-sm truncate" x-text="p.title || p.youtube_url"></div>
+                      <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">
+                        <span x-text="p.channel || 'YouTube'"></span>
+                        <span>•</span>
+                        <span class="font-mono-code text-[11px] px-2 py-0.5 rounded bg-violet-500/15 text-violet-300 border border-violet-500/25" x-text="p.layout_mode"></span>
+                        <span class="text-slate-500 truncate max-w-xs" x-text="p.status_message"></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2.5 shrink-0">
+                    <span class="font-mono-code text-xs font-bold px-2.5 py-1 rounded-lg bg-white/[0.05]"
+                          x-text="(p.clip_count || 0) + ' clips'"></span>
+                    <button @click="filterByProject(p.id)"
+                            class="px-3.5 py-2 rounded-xl btn-studio-primary text-xs">
+                      Open Clips
+                    </button>
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
         </div>
 
-        <!-- ==================== PAGE 2: CREATE NEW CLIPS ==================== -->
-        <div x-show="activeTab === 'create'" x-transition.opacity style="display:none;" class="max-w-3xl mx-auto space-y-6">
-          <div class="admin-card rounded-xl p-6 space-y-6">
-            <div>
-              <h2 class="text-lg font-bold">Langkah 1: Paste Link YouTube</h2>
-              <p class="text-xs text-muted mt-0.5">Mendukung video YouTube biasa, rekaman Live Stream (VOD), maupun stream yang sedang Live.</p>
+        <!-- ==================== PAGE 2: AI CLIP GENERATOR (CREATE) ==================== -->
+        <div x-show="activeTab === 'create'" x-transition.opacity style="display:none;" class="max-w-4xl mx-auto space-y-6">
+          <div class="bento-card rounded-3xl p-7 space-y-7">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-violet-500/15 text-violet-300 border border-violet-500/30 mb-2">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                  <span>MULTI-FACTOR VIRAL &amp; HOOK ENGINE V2</span>
+                </span>
+                <h2 class="text-xl font-extrabold tracking-tight">Import YouTube VOD or Active Live Stream</h2>
+                <p class="text-xs text-slate-400 mt-1">Paste link YouTube—otomatis mengaktifkan <b>Turbo Mode</b> untuk stream panjang tanpa perlu download file video bergiga-giga.</p>
+              </div>
             </div>
 
-            <div class="flex flex-col sm:flex-row gap-2.5">
-              <input type="url" x-model="form.youtube_url" @keydown.enter="inspectUrl()"
-                     placeholder="https://www.youtube.com/watch?v=... atau https://www.youtube.com/live/..."
-                     class="admin-input flex-1 rounded-lg px-4 py-3 text-sm outline-none" />
+            <!-- URL Input Bar -->
+            <div class="flex flex-col sm:flex-row gap-3">
+              <div class="relative flex-1">
+                <input type="url" x-model="form.youtube_url" @keydown.enter="inspectUrl()"
+                       placeholder="https://www.youtube.com/watch?v=... atau https://www.youtube.com/live/..."
+                       class="studio-input w-full rounded-xl pl-4 pr-4 py-3.5 text-sm" />
+              </div>
               <button @click="inspectUrl()" :disabled="inspecting || !form.youtube_url.trim()"
-                      class="px-5 py-3 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-sm font-semibold transition whitespace-nowrap">
-                <span x-text="inspecting ? '⏳ Mengecek...' : '🔍 Cek Info Video'"></span>
+                      class="px-5 py-3.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/10 disabled:opacity-40 text-xs font-bold transition flex items-center justify-center gap-2 whitespace-nowrap">
+                <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <span x-text="inspecting ? 'Analyzing Stream...' : 'Analyze Link'"></span>
               </button>
             </div>
 
-            <!-- Video Info Preview -->
-            <div x-show="inspectedInfo" x-transition class="admin-subcard p-4 rounded-xl flex flex-col sm:flex-row gap-4 items-center">
-              <img :src="inspectedInfo?.thumbnail_url" class="w-36 h-20 object-cover rounded-lg shrink-0" alt="Thumb" />
+            <!-- Inspected Stream Card -->
+            <div x-show="inspectedInfo" x-transition class="studio-subcard p-4 rounded-2xl flex flex-col sm:flex-row gap-4 items-center">
+              <img :src="inspectedInfo?.thumbnail_url" class="w-40 h-24 object-cover rounded-xl border border-white/10 shrink-0" alt="Thumbnail" />
               <div class="flex-1 min-w-0">
-                <div class="flex flex-wrap items-center gap-1.5 mb-1">
-                  <span x-show="inspectedInfo?.is_live" class="px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold">🔴 SEDANG LIVE</span>
-                  <span x-show="!inspectedInfo?.is_live && inspectedInfo?.was_live" class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 text-[10px] font-bold">📺 REKAMAN LIVE</span>
-                  <span x-show="inspectedInfo?.turbo_recommended" class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">⚡ Turbo Mode Aktif</span>
-                  <span class="text-xs text-muted" x-show="inspectedInfo?.duration > 0" x-text="'⏱ ' + formatDuration(inspectedInfo?.duration)"></span>
+                <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                  <span x-show="inspectedInfo?.is_live" class="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-extrabold uppercase">LIVE NOW</span>
+                  <span x-show="inspectedInfo?.turbo_recommended" class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">TURBO SECTION DOWNLOAD</span>
+                  <span x-show="inspectedInfo?.has_live_chat" class="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold">LIVE CHAT REPLAY</span>
+                  <span class="font-mono-code text-xs text-slate-400" x-show="inspectedInfo?.duration > 0" x-text="formatDuration(inspectedInfo?.duration)"></span>
                 </div>
                 <div class="font-bold text-sm truncate" x-text="inspectedInfo?.title"></div>
-                <div class="text-xs text-muted" x-text="inspectedInfo?.channel"></div>
+                <div class="text-xs text-slate-400 mt-0.5" x-text="inspectedInfo?.channel"></div>
               </div>
             </div>
 
-            <!-- Step 2: Visual Layout Cards -->
-            <div class="pt-4 border-t border-inherit">
-              <h2 class="text-base font-bold mb-3">Langkah 2: Pilih Gaya Layout 9:16</h2>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <!-- Step 2: 3 Visual Framing Cards (SVG Diagrams) -->
+            <div class="pt-4 border-t border-white/[0.06]">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Select 9:16 Framing Architecture</label>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div @click="form.layout_mode = 'gaming_split'"
-                     :class="form.layout_mode === 'gaming_split' ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-500/10' : 'border-slate-500/20 hover:border-slate-500/40'"
-                     class="p-4 rounded-xl border cursor-pointer transition">
-                  <div class="text-xl mb-1">🎮</div>
-                  <div class="font-bold text-sm">Gaming / Reaction</div>
-                  <p class="text-xs text-muted mt-1">Split-Screen: Atas Gameplay (62%) + Bawah Zoom Facecam (38%).</p>
+                     :class="form.layout_mode === 'gaming_split' ? 'border-violet-500 bg-violet-500/10 ring-1 ring-violet-500/40' : 'border-white/[0.08] hover:border-white/20'"
+                     class="p-4 rounded-2xl border cursor-pointer transition flex flex-col justify-between">
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="font-bold text-sm">Gaming Split-Screen</span>
+                    <svg class="w-5 h-5 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="20" x="5" y="2" rx="2"/><line x1="5" x2="19" y1="14" y2="14"/></svg>
+                  </div>
+                  <p class="text-xs text-slate-400 leading-relaxed">Top 62% Gameplay Action + Bottom 38% Auto-Tracked Streamer Facecam.</p>
                 </div>
 
                 <div @click="form.layout_mode = 'podcast'"
-                     :class="form.layout_mode === 'podcast' ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-500/10' : 'border-slate-500/20 hover:border-slate-500/40'"
-                     class="p-4 rounded-xl border cursor-pointer transition">
-                  <div class="text-xl mb-1">🎙️</div>
-                  <div class="font-bold text-sm">Podcast / Ngobrol</div>
-                  <p class="text-xs text-muted mt-1">Full 9:16 dengan AI Face-Tracking yang mengikuti wajah pembicara.</p>
+                     :class="form.layout_mode === 'podcast' ? 'border-violet-500 bg-violet-500/10 ring-1 ring-violet-500/40' : 'border-white/[0.08] hover:border-white/20'"
+                     class="p-4 rounded-2xl border cursor-pointer transition flex flex-col justify-between">
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="font-bold text-sm">Podcast Face-Track</span>
+                    <svg class="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                  </div>
+                  <p class="text-xs text-slate-400 leading-relaxed">Full 9:16 vertical crop with OpenCV 5 YuNet active speaker tracking.</p>
                 </div>
 
                 <div @click="form.layout_mode = 'blur_canvas'"
-                     :class="form.layout_mode === 'blur_canvas' ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-500/10' : 'border-slate-500/20 hover:border-slate-500/40'"
-                     class="p-4 rounded-xl border cursor-pointer transition">
-                  <div class="text-xl mb-1">✨</div>
-                  <div class="font-bold text-sm">Blur Canvas 16:9</div>
-                  <p class="text-xs text-muted mt-1">Video utuh 16:9 di tengah dengan background blur rapi.</p>
+                     :class="form.layout_mode === 'blur_canvas' ? 'border-violet-500 bg-violet-500/10 ring-1 ring-violet-500/40' : 'border-white/[0.08] hover:border-white/20'"
+                     class="p-4 rounded-2xl border cursor-pointer transition flex flex-col justify-between">
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="font-bold text-sm">16:9 Cinema Blur</span>
+                    <svg class="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M3 10h18"/><path d="M3 14h18"/></svg>
+                  </div>
+                  <p class="text-xs text-slate-400 leading-relaxed">Full uncropped 16:9 frame centered over an ambient blurred 9:16 canvas.</p>
                 </div>
               </div>
             </div>
 
-            <!-- Step 3: Clean Settings Row -->
-            <div class="pt-4 border-t border-inherit grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <!-- Step 3: Controls Grid -->
+            <div class="pt-4 border-t border-white/[0.06] grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label class="block text-xs font-semibold mb-1.5">Gaya Subtitle Karaoke</label>
-                <select x-model="form.subtitle_style" class="admin-input w-full rounded-lg px-3 py-2 text-sm outline-none">
-                  <option value="karaoke_yellow">⚡ Karaoke Kuning (Pop)</option>
-                  <option value="karaoke_green">🟢 Karaoke Hijau</option>
-                  <option value="neon_cyan">💎 Neon Cyan</option>
-                  <option value="clean_white">⚪ Clean White</option>
-                  <option value="none">🚫 Tanpa Subtitle</option>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Karaoke Caption Style</label>
+                <select x-model="form.subtitle_style" class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold">
+                  <option value="karaoke_yellow">Opus Yellow Pop (Default)</option>
+                  <option value="karaoke_green">Neon Emerald Pop</option>
+                  <option value="neon_cyan">Cyber Cyan Pop</option>
+                  <option value="clean_white">Minimalist White</option>
+                  <option value="none">No Subtitles</option>
                 </select>
               </div>
 
               <div>
-                <label class="block text-xs font-semibold mb-1.5">Posisi Facecam</label>
-                <select x-model="form.facecam_preset" class="admin-input w-full rounded-lg px-3 py-2 text-sm outline-none">
-                  <option value="auto">🤖 Auto Deteksi Wajah</option>
-                  <option value="bottom_right">↘️ Kanan Bawah</option>
-                  <option value="bottom_left">↙️ Kiri Bawah</option>
-                  <option value="top_right">↗️ Kanan Atas</option>
-                  <option value="top_left">↖️ Kiri Atas</option>
-                  <option value="center_right">➡️ Tengah Kanan</option>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Facecam Quadrant</label>
+                <select x-model="form.facecam_preset" class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold">
+                  <option value="auto">AI YuNet Auto-Detect</option>
+                  <option value="bottom_right">Bottom Right</option>
+                  <option value="bottom_left">Bottom Left</option>
+                  <option value="top_right">Top Right</option>
+                  <option value="top_left">Top Left</option>
+                  <option value="center_right">Middle Right</option>
                 </select>
               </div>
 
               <div>
-                <label class="block text-xs font-semibold mb-1.5">Jumlah Klip Terbaik</label>
-                <select x-model.number="form.clip_count" class="admin-input w-full rounded-lg px-3 py-2 text-sm outline-none">
-                  <option :value="3">3 Klip Terbaik</option>
-                  <option :value="4">4 Klip Terbaik</option>
-                  <option :value="5">5 Klip Terbaik</option>
-                  <option :value="8">8 Klip Terbaik</option>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Number of Viral Shorts</label>
+                <select x-model.number="form.clip_count" class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold">
+                  <option :value="3">Top 3 Viral Clips</option>
+                  <option :value="4">Top 4 Viral Clips</option>
+                  <option :value="5">Top 5 Viral Clips</option>
+                  <option :value="8">Top 8 Viral Clips</option>
                 </select>
               </div>
             </div>
 
-            <!-- Submit Bar -->
-            <div class="pt-4 border-t border-inherit flex flex-wrap items-center justify-between gap-4">
-              <label class="flex items-center gap-2 text-xs cursor-pointer">
-                <input type="checkbox" x-model="form.hook_banner" class="rounded accent-indigo-600 w-4 h-4" />
-                <span>Pasang Banner Hook Kuning di Atas Video</span>
+            <!-- Action Footer -->
+            <div class="pt-4 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-4">
+              <label class="flex items-center gap-2.5 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" x-model="form.hook_banner" class="rounded accent-violet-500 w-4 h-4" />
+                <span>Burn Upper Curiosity Hook Banner (First 4.2s)</span>
               </label>
 
               <div class="flex gap-3">
                 <button x-show="inspectedInfo?.is_live" @click="startLiveWatcherFromForm()"
-                        class="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow transition">
-                  🔴 Pantau Live Real-Time
+                        class="px-5 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg transition">
+                  Start Real-Time Live Radar
                 </button>
                 <button @click="createProject()" :disabled="submitting || !form.youtube_url.trim()"
-                        class="px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-bold text-sm shadow transition">
-                  <span x-text="submitting ? '⏳ Memproses...' : '🚀 Generate Klip 9:16 Sekarang'"></span>
+                        class="px-7 py-3 rounded-xl btn-studio-primary disabled:opacity-40 text-xs flex items-center gap-2">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <span x-text="submitting ? 'Launching Pipeline...' : 'Generate Viral Shorts'"></span>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- ==================== PAGE 3: PROJECTS TABLE (ADMIN LIST) ==================== -->
-        <div x-show="activeTab === 'projects'" x-transition.opacity style="display:none;" class="space-y-4">
-          <div class="admin-card rounded-xl overflow-hidden">
-            <div class="p-5 border-b border-inherit flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 class="font-bold text-base">Manajemen Proyek Video</h2>
-                <p class="text-xs text-muted">Pantau progres pembuatan klip, cari ulang Hook V2, atau buka galeri klip per proyek.</p>
-              </div>
-              <button @click="fetchProjects()" class="px-3 py-1.5 rounded-lg border border-slate-500/20 hover:bg-slate-500/10 text-xs font-semibold">
-                🔄 Refresh Status
-              </button>
-            </div>
-
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr class="border-b border-inherit text-xs text-muted uppercase">
-                    <th class="py-3.5 px-4">Proyek / Video</th>
-                    <th class="py-3.5 px-4">Layout</th>
-                    <th class="py-3.5 px-4">Progres &amp; Status</th>
-                    <th class="py-3.5 px-4">Hasil Klip</th>
-                    <th class="py-3.5 px-4 text-right">Aksi Admin</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-500/10">
-                  <template x-for="p in projects" :key="p.id">
-                    <tr class="hover:bg-slate-500/5">
-                      <td class="py-4 px-4 max-w-sm">
-                        <div class="font-bold text-sm line-clamp-1" x-text="p.title || p.youtube_url"></div>
-                        <div class="text-xs text-muted mt-0.5">
-                          <span x-text="p.channel || 'YouTube'"></span>
-                          <span x-show="p.duration > 0" x-text="' • ' + formatDuration(p.duration)"></span>
-                          • <a :href="p.youtube_url" target="_blank" class="text-indigo-400 hover:underline">Sumber ↗</a>
-                        </div>
-                      </td>
-                      <td class="py-4 px-4">
-                        <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-500/10 text-indigo-400" x-text="p.layout_mode"></span>
-                      </td>
-                      <td class="py-4 px-4 min-w-[240px]">
-                        <div class="flex items-center justify-between text-xs mb-1">
-                          <span class="font-semibold"
-                                :class="p.status === 'completed' ? 'text-emerald-500' : (p.status === 'failed' ? 'text-red-500' : 'text-indigo-400')"
-                                x-text="p.status === 'completed' ? '✅ Selesai' : (p.status === 'failed' ? '❌ Gagal' : '⏳ ' + p.progress + '%')"></span>
-                        </div>
-                        <div class="w-full h-1.5 bg-slate-500/20 rounded-full overflow-hidden">
-                          <div class="h-full transition-all duration-500"
-                               :class="p.status === 'completed' ? 'bg-emerald-500' : (p.status === 'failed' ? 'bg-red-500' : 'bg-indigo-500')"
-                               :style="'width:' + p.progress + '%'"></div>
-                        </div>
-                        <div class="text-[11px] text-muted mt-1 line-clamp-1" x-text="p.status_message"></div>
-                      </td>
-                      <td class="py-4 px-4">
-                        <span class="font-extrabold text-sm" x-text="(p.clip_count || 0) + ' Klip'"></span>
-                      </td>
-                      <td class="py-4 px-4 text-right whitespace-nowrap space-x-1.5">
-                        <button @click="filterByProject(p.id)"
-                                class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold">
-                          🎬 Buka Klip
-                        </button>
-                        <button x-show="p.status === 'completed'" @click="reanalyzeProject(p.id)"
-                                title="Cari ulang momen & Hook V2 tanpa download ulang audio"
-                                class="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 text-xs font-semibold">
-                          🎯 Cari Ulang Hook V2
-                        </button>
-                        <button x-show="p.status === 'failed'" @click="retryProject(p.id)"
-                                class="px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-semibold">
-                          ⚡ Proses Ulang
-                        </button>
-                        <button @click="deleteProject(p.id)"
-                                class="px-2.5 py-1.5 rounded-lg hover:bg-red-500/15 text-red-400 text-xs font-semibold">
-                          🗑
-                        </button>
-                      </td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
-              <div x-show="projects.length === 0" class="p-12 text-center text-muted text-sm">
-                Belum ada proyek. Klik <b>+ Buat Klip Baru</b> untuk memulai.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ==================== PAGE 4: CLIPS GALLERY (CLEAN 4-COLUMN CATALOG) ==================== -->
-        <div x-show="activeTab === 'clips'" x-transition.opacity style="display:none;" class="space-y-5">
+        <!-- ==================== PAGE 3: CLIP LIBRARY (9:16 CATALOG WITH HOVER AUTO-PLAY) ==================== -->
+        <div x-show="activeTab === 'clips'" x-transition.opacity style="display:none;" class="space-y-6">
           <!-- Filter Bar -->
-          <div class="admin-card rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="bento-card rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div class="flex flex-wrap items-center gap-3">
-              <span class="text-xs font-bold uppercase text-muted">Filter Proyek:</span>
-              <select x-model="clipFilterProjectId" @change="applyClipFilter()" class="admin-input rounded-lg px-3 py-1.5 text-xs font-semibold outline-none">
-                <option value="">Semua Proyek (<span x-text="allClips.length"></span> Klip)</option>
+              <span class="text-xs font-bold text-slate-400">Source Project:</span>
+              <select x-model="clipFilterProjectId" class="studio-input rounded-xl px-3.5 py-2 text-xs font-semibold">
+                <option value="">All Projects (<span x-text="allClips.length"></span> Shorts)</option>
                 <template x-for="p in projects" :key="p.id">
-                  <option :value="p.id" x-text="(p.title || p.youtube_url).slice(0, 48) + ' (' + (p.clip_count || 0) + ')'"></option>
+                  <option :value="p.id" x-text="(p.title || p.youtube_url).slice(0, 52) + ' (' + (p.clip_count || 0) + ')'"></option>
                 </template>
               </select>
             </div>
 
-            <div class="flex items-center gap-2" x-show="clipFilterProjectId">
+            <div class="flex items-center gap-2.5" x-show="clipFilterProjectId">
               <button @click="reanalyzeProject(clipFilterProjectId)"
-                      class="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 text-xs font-bold">
-                🎯 Cari Ulang Hook &amp; Momen V2
+                      class="px-3.5 py-2 rounded-xl bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 border border-violet-500/30 text-xs font-bold flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                <span>Re-Train Hook 0:00 (V2)</span>
               </button>
-              <button @click="clipFilterProjectId = ''; applyClipFilter()" class="text-xs text-muted hover:underline">
-                Reset Filter
-              </button>
+              <button @click="clipFilterProjectId = ''" class="text-xs text-slate-400 hover:text-white">Reset</button>
             </div>
           </div>
 
-          <!-- 3/4-Column Compact Clip Cards Grid -->
+          <!-- 4-Column OpusClip Bento Grid -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            <template x-for="(clip, idx) in filteredClips()" :key="clip.id">
-              <div class="admin-card rounded-xl overflow-hidden flex flex-col justify-between hover:border-indigo-500/60 transition">
+            <template x-for="clip in filteredClips()" :key="clip.id">
+              <div class="bento-card bento-card-interactive rounded-2xl overflow-hidden flex flex-col justify-between group"
+                   @mouseenter="playHoverVideo($el)"
+                   @mouseleave="stopHoverVideo($el)">
                 <div>
-                  <!-- 9:16 Poster / Inline Video Preview -->
-                  <div class="aspect-[9/14] bg-black relative group cursor-pointer" @click="openClipStudio(clip)">
-                    <template x-if="clip.thumbnail_url">
-                      <img :src="clip.thumbnail_url" class="w-full h-full object-cover" alt="Thumbnail" />
+                  <div class="aspect-[9/15] bg-black relative overflow-hidden cursor-pointer" @click="openClipStudio(clip)">
+                    <img x-show="clip.thumbnail_url" :src="clip.thumbnail_url"
+                         class="w-full h-full object-cover group-hover:scale-105 transition duration-500" alt="Poster" />
+
+                    <template x-if="clip.video_url">
+                      <video :src="clip.video_url" muted loop playsinline preload="none"
+                             class="hover-preview-video absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-300"></video>
                     </template>
-                    <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                      <span class="px-4 py-2 rounded-full bg-indigo-600 text-white font-bold text-xs shadow-lg">▶ Putar &amp; Kelola</span>
+
+                    <!-- Circular SVG Score Ring -->
+                    <div class="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/10">
+                      <div class="relative w-8 h-8 flex items-center justify-center">
+                        <svg class="w-8 h-8" viewBox="0 0 36 36">
+                          <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3.2"></circle>
+                          <circle class="score-ring-circle" cx="18" cy="18" r="15" fill="none"
+                                  :stroke="clip.virality_score >= 88 ? '#10b981' : '#f59e0b'"
+                                  stroke-width="3.2"
+                                  stroke-dasharray="94.2"
+                                  :stroke-dashoffset="94.2 - (94.2 * (clip.virality_score || 80)) / 100"
+                                  stroke-linecap="round"></circle>
+                        </svg>
+                        <span class="font-mono-code text-[11px] font-extrabold text-white absolute" x-text="clip.virality_score"></span>
+                      </div>
+                      <div class="leading-none pr-1">
+                        <div class="text-[9px] uppercase font-bold text-slate-400">VIRAL</div>
+                        <div class="text-[10px] font-bold text-emerald-400">SCORE</div>
+                      </div>
                     </div>
-                    <!-- Score Badge -->
-                    <div class="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/85 text-amber-400 font-extrabold text-xs border border-amber-400/30"
-                         x-text="'🔥 ' + clip.virality_score + '/100'"></div>
-                    <!-- Duration Badge -->
-                    <div class="absolute top-3 right-3 px-2 py-1 rounded-md bg-black/80 text-white font-semibold text-xs"
-                         x-text="Math.round(clip.duration) + ' dtk'"></div>
-                    <!-- Bottom Hook & Time Overlay -->
-                    <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-3 pt-10">
-                      <div class="text-[10px] font-extrabold uppercase tracking-wider text-yellow-300" x-text="clip.hook_text"></div>
-                      <h3 class="font-bold text-xs text-white line-clamp-2 mt-0.5" x-text="clip.title"></h3>
+
+                    <div class="absolute top-3 right-3 font-mono-code text-[11px] font-bold px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md text-white border border-white/10"
+                         x-text="Math.round(clip.duration) + 's'"></div>
+
+                    <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent p-4 pt-12">
+                      <div class="inline-block px-2 py-0.5 rounded bg-amber-400 text-black font-extrabold text-[10px] uppercase tracking-wide mb-1.5"
+                           x-text="clip.hook_text || 'HOOK'"></div>
+                      <h3 class="font-bold text-xs sm:text-sm text-white line-clamp-2 leading-snug" x-text="clip.title"></h3>
                     </div>
                   </div>
 
-                  <!-- Brief Reason & Meta -->
-                  <div class="p-3.5 space-y-2">
-                    <div class="flex items-center justify-between text-[11px] text-muted">
-                      <span x-text="'⏱ ' + formatDuration(clip.start_time) + ' - ' + formatDuration(clip.end_time)"></span>
-                      <span class="uppercase font-semibold text-indigo-400" x-text="clip.category"></span>
+                  <div class="p-3.5 space-y-1.5">
+                    <div class="flex items-center justify-between text-[11px] text-slate-400">
+                      <span class="font-mono-code" x-text="formatDuration(clip.start_time) + ' → ' + formatDuration(clip.end_time)"></span>
+                      <span class="uppercase font-bold text-violet-400 text-[10px]" x-text="clip.category"></span>
                     </div>
-                    <p class="text-[11px] text-muted line-clamp-2" x-text="clip.reason"></p>
+                    <p class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed" x-text="clip.reason"></p>
                   </div>
                 </div>
 
-                <!-- Card Footer Quick Actions -->
-                <div class="p-3 pt-0 grid grid-cols-3 gap-1.5">
+                <!-- Card Footer Actions -->
+                <div class="p-3 pt-0 flex items-center gap-1.5">
                   <button @click="openClipStudio(clip)"
-                          class="col-span-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
-                    ▶ Studio
+                          class="flex-1 py-2 rounded-xl btn-studio-primary text-xs flex items-center justify-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <span>Studio &amp; Post</span>
                   </button>
-                  <button @click="copyCaption(clip)"
-                          class="col-span-1 py-2 rounded-lg bg-slate-500/15 hover:bg-slate-500/25 text-xs font-semibold transition">
-                    📋 Caption
+                  <button @click="copyCaption(clip)" title="Copy Caption"
+                          class="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] text-slate-300 border border-white/[0.06] transition">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                   </button>
-                  <a :href="'/api/clips/' + clip.id + '/download'"
-                     class="col-span-1 py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-bold text-center transition">
-                    ⬇ MP4
+                  <a :href="'/api/clips/' + clip.id + '/download'" title="Download MP4"
+                     class="p-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/25 transition">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                   </a>
                 </div>
               </div>
             </template>
           </div>
+        </div>
 
-          <div x-show="filteredClips().length === 0" class="admin-card rounded-xl p-12 text-center text-muted text-sm">
-            Belum ada klip pada filter ini.
+        <!-- ==================== PAGE 4: SOURCE PROJECTS TABLE ==================== -->
+        <div x-show="activeTab === 'projects'" x-transition.opacity style="display:none;" class="space-y-5">
+          <div class="bento-card rounded-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+              <div>
+                <h2 class="font-bold text-base">Source YouTube Projects</h2>
+                <p class="text-xs text-slate-400">Kelola semua video sumber, jalankan Re-Train Hook V2, atau buka koleksi klipnya.</p>
+              </div>
+              <button @click="fetchProjects()" class="px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs font-semibold flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                <span>Refresh</span>
+              </button>
+            </div>
+
+            <div class="divide-y divide-white/[0.06]">
+              <template x-for="p in projects" :key="p.id">
+                <div class="p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5 hover:bg-white/[0.02] transition">
+                  <div class="flex items-start sm:items-center gap-4 min-w-0">
+                    <div class="w-32 h-20 rounded-xl bg-slate-900 overflow-hidden shrink-0 border border-white/10 relative">
+                      <img x-show="p.thumbnail_url" :src="p.thumbnail_url" class="w-full h-full object-cover" alt="Thumbnail" />
+                      <span x-show="p.duration > 0" class="font-mono-code absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/85 text-[10px] text-white font-bold"
+                            x-text="formatDuration(p.duration)"></span>
+                    </div>
+                    <div class="min-w-0 space-y-1">
+                      <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              :class="p.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : (p.status === 'failed' ? 'bg-red-500/15 text-red-400' : 'bg-violet-500/15 text-violet-300')">
+                          <span class="w-1.5 h-1.5 rounded-full" :class="p.status === 'completed' ? 'bg-emerald-400' : (p.status === 'failed' ? 'bg-red-400' : 'bg-violet-400 animate-ping')"></span>
+                          <span x-text="p.status.toUpperCase()"></span>
+                        </span>
+                        <span class="font-mono-code text-[11px] px-2 py-0.5 rounded bg-white/[0.05] text-slate-300" x-text="p.layout_mode"></span>
+                      </div>
+                      <h3 class="font-bold text-sm sm:text-base truncate" x-text="p.title || p.youtube_url"></h3>
+                      <p class="text-xs text-slate-400 truncate" x-text="p.status_message"></p>
+                      <div x-show="p.status === 'processing' || p.status === 'queued'" class="w-64 h-1.5 bg-white/10 rounded-full overflow-hidden mt-2">
+                        <div class="h-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all duration-500" :style="'width:' + p.progress + '%'"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+                    <button @click="filterByProject(p.id)"
+                            class="px-4 py-2 rounded-xl btn-studio-primary text-xs">
+                      View Clips (<span x-text="p.clip_count || 0"></span>)
+                    </button>
+                    <button x-show="p.status === 'completed'" @click="reanalyzeProject(p.id)"
+                            class="px-3.5 py-2 rounded-xl bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 border border-violet-500/30 text-xs font-bold">
+                      Re-Train Hook V2
+                    </button>
+                    <button x-show="p.status === 'failed'" @click="retryProject(p.id)"
+                            class="px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold">
+                      Retry Turbo
+                    </button>
+                    <button @click="deleteProject(p.id)"
+                            class="p-2 rounded-xl bg-white/[0.04] hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-white/[0.06] transition">
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
 
-        <!-- ==================== PAGE 5: LIVE STREAM MONITOR ==================== -->
+        <!-- ==================== PAGE 5: LIVE STREAM RADAR ==================== -->
         <div x-show="activeTab === 'live'" x-transition.opacity style="display:none;" class="max-w-4xl mx-auto space-y-6">
-          <div class="admin-card rounded-xl p-6 space-y-4">
-            <div>
-              <h2 class="text-base font-bold flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-red-500 live-dot"></span>
-                Pantau YouTube Live Secara Real-Time
-              </h2>
-              <p class="text-xs text-muted mt-0.5">Merekam stream yang sedang berlangsung per segmen (rolling chunks) dan langsung memotong klip 9:16 otomatis saat ada momen seru.</p>
+          <div class="bento-card rounded-3xl p-7 space-y-5">
+            <div class="flex items-center gap-3">
+              <span class="w-3 h-3 rounded-full bg-rose-500 live-dot"></span>
+              <div>
+                <h2 class="text-lg font-extrabold">Real-Time Live Stream Radar</h2>
+                <p class="text-xs text-slate-400">Captures rolling segments from active YouTube Live broadcasts and auto-renders high-scoring moments.</p>
+              </div>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div class="sm:col-span-2">
-                <label class="block text-xs font-semibold mb-1">URL YouTube yang Sedang Live</label>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Active YouTube Live URL</label>
                 <input type="url" x-model="liveForm.youtube_url" placeholder="https://www.youtube.com/live/..."
-                       class="admin-input w-full rounded-lg px-4 py-2.5 text-sm outline-none" />
+                       class="studio-input w-full rounded-xl px-4 py-3 text-sm" />
               </div>
               <div>
-                <label class="block text-xs font-semibold mb-1">Layout 9:16</label>
-                <select x-model="liveForm.layout_mode" class="admin-input w-full rounded-lg px-3 py-2 text-sm outline-none">
-                  <option value="gaming_split">🎮 Gaming Split-Screen</option>
-                  <option value="podcast">🎙️ Podcast Face Tracking</option>
-                  <option value="blur_canvas">✨ Blur Canvas</option>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Framing Mode</label>
+                <select x-model="liveForm.layout_mode" class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold">
+                  <option value="gaming_split">Gaming Split-Screen</option>
+                  <option value="podcast">Podcast Face-Track</option>
+                  <option value="blur_canvas">16:9 Cinema Blur</option>
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-semibold mb-1">Durasi Rekam per Segmen (detik)</label>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Rolling Buffer Window (Seconds)</label>
                 <input type="number" min="60" max="600" x-model.number="liveForm.chunk_seconds"
-                       class="admin-input w-full rounded-lg px-3 py-2 text-sm outline-none" />
+                       class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-mono-code" />
               </div>
             </div>
 
-            <div class="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-inherit">
-              <label class="flex items-center gap-2 text-xs cursor-pointer">
-                <input type="checkbox" x-model="liveForm.auto_post" class="rounded accent-red-600 w-4 h-4" />
-                <span>Autopilot Auto-Post ke TikTok &amp; IG Reels setiap klip selesai</span>
+            <div class="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-white/[0.06]">
+              <label class="flex items-center gap-2.5 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" x-model="liveForm.auto_post" class="rounded accent-rose-500 w-4 h-4" />
+                <span>Autopilot Publish to TikTok &amp; Instagram Reels</span>
               </label>
               <button @click="startLiveMonitor()" :disabled="!liveForm.youtube_url.trim()"
-                      class="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-bold text-xs shadow transition">
-                🔴 Mulai Pantau Live
+                      class="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-bold text-xs shadow-lg transition">
+                Launch Live Radar
               </button>
             </div>
           </div>
-
-          <div class="space-y-3">
-            <template x-for="m in liveMonitors" :key="m.id">
-              <div class="admin-card rounded-xl p-4 flex items-center justify-between gap-4">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2">
-                    <span class="px-2 py-0.5 rounded text-[10px] font-bold"
-                          :class="m.status === 'running' ? 'bg-red-500/20 text-red-400' : 'bg-slate-500/20 text-muted'"
-                          x-text="m.status.toUpperCase()"></span>
-                    <span class="text-xs text-muted" x-text="'Chunk: ' + m.chunks_processed + ' • Klip: ' + m.clips_generated"></span>
-                  </div>
-                  <div class="font-bold text-sm truncate mt-1" x-text="m.title || m.youtube_url"></div>
-                  <div class="text-xs text-indigo-400 font-mono mt-0.5" x-text="m.last_log"></div>
-                </div>
-                <div class="flex gap-2 shrink-0">
-                  <button @click="filterByProject('liveproj_' + m.id.slice(-8))" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold">Lihat Klip</button>
-                  <button x-show="m.status === 'running'" @click="stopLiveMonitor(m.id)" class="px-3 py-1.5 rounded-lg bg-red-600/20 text-red-400 text-xs font-semibold">Stop</button>
-                </div>
-              </div>
-            </template>
-          </div>
         </div>
 
-        <!-- ==================== PAGE 6: SETTINGS & API ==================== -->
+        <!-- ==================== PAGE 6: API & SOCIAL AUTH ==================== -->
         <div x-show="activeTab === 'settings'" x-transition.opacity style="display:none;" class="max-w-3xl mx-auto space-y-6">
-          <div class="admin-card rounded-xl p-6 space-y-4">
-            <div class="flex items-center justify-between border-b border-inherit pb-4">
+          <div class="bento-card rounded-2xl p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-white/[0.06] pb-4">
               <div>
-                <h2 class="font-bold text-base">🧠 Google Gemini AI (Opsional)</h2>
-                <p class="text-xs text-muted">Tanpa API key pun aplikasi sudah berjalan dengan <b>Viral &amp; Hook Engine V2</b> lokal.</p>
+                <h2 class="font-bold text-base">Google Gemini 4 AI Director</h2>
+                <p class="text-xs text-slate-400">Optional — combines with our local Multi-Factor Viral &amp; Hook V2 engine.</p>
               </div>
-              <a href="https://aistudio.google.com/apikey" target="_blank" class="text-xs text-indigo-400 hover:underline font-semibold">Ambil API Key Gratis ↗</a>
+              <a href="https://aistudio.google.com/apikey" target="_blank" class="text-xs text-violet-400 hover:underline font-bold">Get API Key &rarr;</a>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div class="sm:col-span-2">
-                <label class="block text-xs font-semibold mb-1">Gemini API Key</label>
-                <input type="password" x-model="settings.gemini_api_key" placeholder="AIzaSy..." class="admin-input w-full rounded-lg px-3.5 py-2 text-sm outline-none" />
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Gemini API Key</label>
+                <input type="password" x-model="settings.gemini_api_key" placeholder="AIzaSy..." class="studio-input w-full rounded-xl px-4 py-2.5 text-sm font-mono-code" />
               </div>
               <div>
-                <label class="block text-xs font-semibold mb-1">Model AI</label>
-                <select x-model="settings.gemini_model" class="admin-input w-full rounded-lg px-3 py-2 text-sm outline-none">
-                  <option value="gemini-4-hydrogen">Gemini 4 Hydrogen (Rekomendasi)</option>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Reasoning Model</label>
+                <select x-model="settings.gemini_model" class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold">
+                  <option value="gemini-4-hydrogen">Gemini 4 Hydrogen (Recommended)</option>
                   <option value="gemini-4-argon">Gemini 4 Argon</option>
                   <option value="gemini-4-neon">Gemini 4 Neon</option>
                   <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite</option>
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-semibold mb-1">Engine Transkripsi</label>
-                <select x-model="settings.transcribe_engine" class="admin-input w-full rounded-lg px-3 py-2 text-sm outline-none">
+                <label class="block text-xs font-semibold text-slate-300 mb-1">ASR Transcription Pipeline</label>
+                <select x-model="settings.transcribe_engine" class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold">
                   <option value="auto">Auto (YouTube JSON3 &rarr; Gemini 3.5 Transcribe)</option>
                   <option value="gemini">Gemini 3.5 Transcribe</option>
-                  <option value="youtube_subs">Subtitle YouTube Saja (Instan)</option>
+                  <option value="youtube_subs">YouTube Word-Offsets Only</option>
                 </select>
               </div>
             </div>
           </div>
 
-          <div class="admin-card rounded-xl p-6 space-y-4">
-            <div class="border-b border-inherit pb-3">
-              <h2 class="font-bold text-base">🎵 TikTok &amp; 📸 Instagram Reels Auto-Post</h2>
-              <p class="text-xs text-muted">Isi token developer resmi jika ingin posting 1-klik langsung dari dashboard.</p>
+          <div class="bento-card rounded-2xl p-6 space-y-4">
+            <div class="border-b border-white/[0.06] pb-4">
+              <h2 class="font-bold text-base">Direct Social Publishing (TikTok &amp; Instagram Reels)</h2>
+              <p class="text-xs text-slate-400">Connect official API credentials for 1-click publishing straight from the Studio Inspector.</p>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div class="sm:col-span-2">
-                <label class="block text-xs font-semibold mb-1">TikTok Creator Access Token (Content Posting API v2)</label>
-                <input type="password" x-model="settings.tiktok_access_token" placeholder="act.xxxxx..." class="admin-input w-full rounded-lg px-3.5 py-2 text-sm outline-none" />
+                <label class="block text-xs font-semibold text-slate-300 mb-1">TikTok Content Posting API v2 Token</label>
+                <input type="password" x-model="settings.tiktok_access_token" placeholder="act.xxxxx..." class="studio-input w-full rounded-xl px-4 py-2.5 text-sm font-mono-code" />
               </div>
               <div>
-                <label class="block text-xs font-semibold mb-1">Instagram Business User ID</label>
-                <input type="text" x-model="settings.instagram_user_id" placeholder="178414xxxxx" class="admin-input w-full rounded-lg px-3.5 py-2 text-sm outline-none" />
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Instagram Business User ID</label>
+                <input type="text" x-model="settings.instagram_user_id" placeholder="178414xxxxx" class="studio-input w-full rounded-xl px-4 py-2.5 text-sm font-mono-code" />
               </div>
               <div>
-                <label class="block text-xs font-semibold mb-1">Public Base URL (untuk IG Graph API)</label>
-                <input type="url" x-model="settings.public_base_url" placeholder="https://xxxx.ngrok-free.app" class="admin-input w-full rounded-lg px-3.5 py-2 text-sm outline-none" />
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Public Tunnel URL (for Meta Reels Pull)</label>
+                <input type="url" x-model="settings.public_base_url" placeholder="https://xxxx.ngrok-free.app" class="studio-input w-full rounded-xl px-4 py-2.5 text-sm font-mono-code" />
               </div>
               <div class="sm:col-span-2">
-                <label class="block text-xs font-semibold mb-1">Meta Long-Lived Access Token</label>
-                <input type="password" x-model="settings.instagram_access_token" placeholder="EAAxxxxx..." class="admin-input w-full rounded-lg px-3.5 py-2 text-sm outline-none" />
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Meta Long-Lived Graph Token</label>
+                <input type="password" x-model="settings.instagram_access_token" placeholder="EAAxxxxx..." class="studio-input w-full rounded-xl px-4 py-2.5 text-sm font-mono-code" />
               </div>
             </div>
-
             <div class="pt-3 flex justify-end">
-              <button @click="saveSettings()" class="px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow transition">
-                💾 Simpan Semua Pengaturan
+              <button @click="saveSettings()" class="px-6 py-2.5 rounded-xl btn-studio-primary text-xs">
+                Save Configuration
               </button>
             </div>
           </div>
@@ -678,21 +784,23 @@
     </div>
   </div>
 
-  <!-- ==================== STUDIO DRAWER / MODAL: PREVIEW 9:16 + EDIT + AUTO-POST ==================== -->
+  <!-- ==================== STUDIO INSPECTOR MODAL (9:16 PLAYER + SOCIAL PUBLISH) ==================== -->
   <div x-show="studioClip" x-transition.opacity style="display:none;"
-       class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-    <div class="admin-card rounded-2xl max-w-4xl w-full p-6 shadow-2xl my-8" @click.away="studioClip = null">
-      <div class="flex items-center justify-between pb-4 border-b border-inherit">
-        <div class="flex items-center gap-2.5">
-          <span class="px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-400 font-extrabold text-xs"
-                x-text="'🔥 Skor Viral: ' + (studioClip?.virality_score || 0) + '/100'"></span>
-          <h3 class="font-bold text-base truncate max-w-lg" x-text="studioClip?.title"></h3>
+       class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bento-card rounded-3xl max-w-4xl w-full p-7 border border-white/15 shadow-2xl my-8" @click.away="studioClip = null">
+      <div class="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+        <div class="flex items-center gap-3">
+          <span class="font-mono-code px-3 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-extrabold text-xs"
+                x-text="'SCORE ' + (studioClip?.virality_score || 0) + '/100'"></span>
+          <h3 class="font-extrabold text-base truncate max-w-lg" x-text="studioClip?.title"></h3>
         </div>
-        <button @click="studioClip = null" class="text-muted hover:text-white text-2xl leading-none">&times;</button>
+        <button @click="studioClip = null" class="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 mt-5 items-start">
-        <!-- Left: 9:16 Video Player -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-7 mt-6 items-start">
+        <!-- Left: 9:16 Vertical Monitor -->
         <div class="md:col-span-5 flex flex-col items-center">
           <div class="phone-frame w-full max-w-[270px]">
             <template x-if="studioClip?.video_url">
@@ -700,56 +808,60 @@
                      controls autoplay playsinline class="w-full h-full object-cover"></video>
             </template>
           </div>
-          <div class="text-xs text-muted mt-2" x-text="'Durasi: ' + Math.round(studioClip?.duration || 0) + ' detik (' + formatDuration(studioClip?.start_time) + ' - ' + formatDuration(studioClip?.end_time) + ')'"></div>
+          <div class="font-mono-code text-xs text-slate-400 mt-2.5"
+               x-text="formatDuration(studioClip?.start_time) + ' → ' + formatDuration(studioClip?.end_time) + ' (' + Math.round(studioClip?.duration || 0) + 's)'"></div>
         </div>
 
-        <!-- Right: Caption, Hook Info, Edit & Social Post -->
+        <!-- Right: Telemetry, Caption Editor & Publish Suite -->
         <div class="md:col-span-7 space-y-4">
-          <div class="admin-subcard p-3.5 rounded-xl text-xs space-y-1">
-            <div class="font-bold text-amber-400" x-text="'Banner Hook: ' + (studioClip?.hook_text || '-')"></div>
-            <div class="text-muted" x-text="studioClip?.reason"></div>
+          <div class="studio-subcard p-4 rounded-2xl space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-400" x-text="'HOOK: ' + (studioClip?.hook_text || '-')"></span>
+              <span class="font-mono-code text-[11px] text-violet-400 uppercase" x-text="studioClip?.layout_mode"></span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed" x-text="studioClip?.reason"></p>
           </div>
 
           <div>
-            <div class="flex items-center justify-between text-xs mb-1">
-              <span class="font-semibold">Caption TikTok &amp; Instagram Reels</span>
-              <button @click="copyCaption(studioClip)" class="text-indigo-400 hover:underline font-bold">📋 Copy Caption + Hashtag</button>
+            <div class="flex items-center justify-between text-xs mb-1.5">
+              <span class="font-bold text-slate-300">Social Media Caption &amp; Tags</span>
+              <button @click="copyCaption(studioClip)" class="text-violet-400 hover:text-violet-300 font-bold flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                <span>Copy Text</span>
+              </button>
             </div>
-            <textarea x-model="studioClip.caption" rows="3" class="admin-input w-full rounded-lg p-3 text-xs outline-none"></textarea>
-            <input type="text" x-model="studioClip.hashtags" class="admin-input w-full mt-2 rounded-lg px-3 py-2 text-xs text-indigo-400 outline-none" />
+            <textarea x-model="studioClip.caption" rows="3" class="studio-input w-full rounded-xl p-3 text-xs leading-relaxed"></textarea>
+            <input type="text" x-model="studioClip.hashtags" class="studio-input w-full mt-2 rounded-xl px-3.5 py-2 text-xs font-mono-code text-cyan-400" />
           </div>
 
-          <!-- Actions: Download & Edit Facecam -->
-          <div class="flex flex-wrap gap-2.5 pt-2">
+          <div class="flex flex-wrap gap-2.5 pt-1">
             <a :href="'/api/clips/' + studioClip?.id + '/download'"
-               class="px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">
-              ⬇️ Download MP4 9:16
+               class="px-4 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-2 transition">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+              <span>Download MP4 (1080p)</span>
             </a>
             <button @click="openEditModal(studioClip)"
-                    class="px-4 py-2.5 rounded-lg border border-slate-500/30 hover:bg-slate-500/10 text-xs font-bold transition">
-              ✂️ Edit Waktu / Posisi Kotak Facecam
-            </button>
-            <button @click="deleteClip(studioClip.id); studioClip = null"
-                    class="px-3 py-2.5 rounded-lg hover:bg-red-500/15 text-red-400 text-xs font-bold transition">
-              🗑 Hapus
+                    class="px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-bold flex items-center gap-2 transition">
+              <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></svg>
+              <span>Trim &amp; Facecam Crop</span>
             </button>
           </div>
 
-          <!-- Auto-Post Buttons -->
-          <div class="pt-4 border-t border-inherit">
-            <div class="text-xs font-bold mb-2.5">🚀 Auto-Post Langsung ke Sosmed</div>
+          <!-- Direct Social Publish Row -->
+          <div class="pt-4 border-t border-white/[0.08]">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Direct Cloud Publish</div>
             <div class="flex flex-wrap gap-2.5">
               <button @click="publishClip(studioClip, ['tiktok'])" :disabled="publishingId === studioClip?.id"
-                      class="px-4 py-2.5 rounded-lg bg-slate-900 hover:bg-black text-white border border-slate-700 text-xs font-bold transition">
-                🎵 Post ke TikTok
+                      class="px-4 py-2.5 rounded-xl bg-white/[0.07] hover:bg-white/[0.14] border border-white/15 text-white text-xs font-bold transition">
+                Publish to TikTok
               </button>
               <button @click="publishClip(studioClip, ['instagram'])" :disabled="publishingId === studioClip?.id"
-                      class="px-4 py-2.5 rounded-lg bg-gradient-to-r from-pink-600 to-amber-500 hover:brightness-110 text-white text-xs font-bold transition">
-                📸 Post ke IG Reels
+                      class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-600 to-amber-500 hover:brightness-110 text-white text-xs font-bold transition">
+                Publish to IG Reels
               </button>
               <button @click="publishClip(studioClip, ['tiktok', 'instagram'])" :disabled="publishingId === studioClip?.id"
-                      class="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
-                ⚡ Post Keduanya
+                      class="px-4 py-2.5 rounded-xl btn-studio-primary text-xs">
+                Publish Both
               </button>
             </div>
           </div>
@@ -758,61 +870,60 @@
     </div>
   </div>
 
-  <!-- ==================== MODAL: EDIT CLIP & VISUAL FACECAM CROPPER ==================== -->
+  <!-- ==================== MODAL: TRIM & VISUAL FACECAM CROPPER ==================== -->
   <div x-show="editModal.open" x-transition.opacity style="display:none;"
-       class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-    <div class="admin-card rounded-2xl max-w-3xl w-full p-6 shadow-2xl my-8" @click.away="editModal.open = false">
-      <div class="flex items-center justify-between mb-4 pb-3 border-b border-inherit">
-        <h3 class="font-bold text-base">✂️ Edit Klip &amp; Area Facecam</h3>
-        <button @click="editModal.open = false" class="text-muted hover:text-white text-xl">&times;</button>
+       class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bento-card rounded-3xl max-w-3xl w-full p-7 border border-white/15 shadow-2xl my-8" @click.away="editModal.open = false">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.08]">
+        <h3 class="font-extrabold text-base">Trim Timestamps &amp; Facecam Crop Region</h3>
+        <button @click="editModal.open = false" class="text-slate-400 hover:text-white text-xl">&times;</button>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-semibold mb-1">Judul Klip</label>
-          <input type="text" x-model="editModal.title" class="admin-input w-full rounded-lg px-3 py-2 text-sm" />
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Clip Title</label>
+          <input type="text" x-model="editModal.title" class="studio-input w-full rounded-xl px-3.5 py-2 text-xs" />
         </div>
         <div>
-          <label class="block text-xs font-semibold mb-1">Banner Hook Atas</label>
-          <input type="text" x-model="editModal.hook_text" class="admin-input w-full rounded-lg px-3 py-2 text-sm" />
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Upper Hook Banner</label>
+          <input type="text" x-model="editModal.hook_text" class="studio-input w-full rounded-xl px-3.5 py-2 text-xs" />
         </div>
         <div>
-          <label class="block text-xs font-semibold mb-1">Detik Mulai</label>
-          <input type="number" step="0.5" x-model.number="editModal.start_time" class="admin-input w-full rounded-lg px-3 py-2 text-sm" />
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Start Time (sec)</label>
+          <input type="number" step="0.5" x-model.number="editModal.start_time" class="studio-input w-full rounded-xl px-3.5 py-2 text-xs font-mono-code" />
         </div>
         <div>
-          <label class="block text-xs font-semibold mb-1">Detik Selesai</label>
-          <input type="number" step="0.5" x-model.number="editModal.end_time" class="admin-input w-full rounded-lg px-3 py-2 text-sm" />
+          <label class="block text-xs font-semibold text-slate-300 mb-1">End Time (sec)</label>
+          <input type="number" step="0.5" x-model.number="editModal.end_time" class="studio-input w-full rounded-xl px-3.5 py-2 text-xs font-mono-code" />
         </div>
         <div>
-          <label class="block text-xs font-semibold mb-1">Mode Layout</label>
-          <select x-model="editModal.layout_mode" class="admin-input w-full rounded-lg px-3 py-2 text-sm">
-            <option value="gaming_split">🎮 Gaming Split-Screen</option>
-            <option value="podcast">🎙️ Podcast Face Tracking</option>
-            <option value="blur_canvas">✨ Blur Canvas</option>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">9:16 Layout</label>
+          <select x-model="editModal.layout_mode" class="studio-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold">
+            <option value="gaming_split">Gaming Split-Screen</option>
+            <option value="podcast">Podcast Face-Track</option>
+            <option value="blur_canvas">16:9 Cinema Blur</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs font-semibold mb-1">Gaya Subtitle</label>
-          <select x-model="editModal.subtitle_style" class="admin-input w-full rounded-lg px-3 py-2 text-sm">
-            <option value="karaoke_yellow">⚡ Karaoke Kuning</option>
-            <option value="karaoke_green">🟢 Karaoke Hijau</option>
-            <option value="neon_cyan">💎 Neon Cyan</option>
-            <option value="clean_white">⚪ Clean White</option>
-            <option value="none">🚫 Tanpa Subtitle</option>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Karaoke Style</label>
+          <select x-model="editModal.subtitle_style" class="studio-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold">
+            <option value="karaoke_yellow">Opus Yellow Pop</option>
+            <option value="karaoke_green">Neon Emerald</option>
+            <option value="neon_cyan">Cyber Cyan</option>
+            <option value="clean_white">Minimalist White</option>
+            <option value="none">No Subtitles</option>
           </select>
         </div>
       </div>
 
-      <!-- Visual Facecam Drag Cropper -->
-      <div x-show="editModal.layout_mode === 'gaming_split'" class="mt-5 pt-4 border-t border-inherit">
+      <div x-show="editModal.layout_mode === 'gaming_split'" class="mt-5 pt-4 border-t border-white/[0.08]">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <span class="text-xs font-bold text-amber-400">🎯 Drag Kotak Kuning pada Area Wajah Streamer</span>
+          <span class="text-xs font-bold text-amber-400">Drag across the 16:9 frame to lock the streamer's facecam region</span>
           <div class="flex gap-1.5 text-[11px]">
-            <button @click="applyFacecamPreset('bottom_right')" class="px-2 py-1 rounded bg-slate-500/15 hover:bg-slate-500/25">Kanan Bawah</button>
-            <button @click="applyFacecamPreset('bottom_left')" class="px-2 py-1 rounded bg-slate-500/15 hover:bg-slate-500/25">Kiri Bawah</button>
-            <button @click="applyFacecamPreset('top_right')" class="px-2 py-1 rounded bg-slate-500/15 hover:bg-slate-500/25">Kanan Atas</button>
-            <button @click="applyFacecamPreset('top_left')" class="px-2 py-1 rounded bg-slate-500/15 hover:bg-slate-500/25">Kiri Atas</button>
+            <button @click="applyFacecamPreset('bottom_right')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12]">Bottom Right</button>
+            <button @click="applyFacecamPreset('bottom_left')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12]">Bottom Left</button>
+            <button @click="applyFacecamPreset('top_right')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12]">Top Right</button>
+            <button @click="applyFacecamPreset('top_left')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12]">Top Left</button>
           </div>
         </div>
 
@@ -825,16 +936,16 @@
           <img x-show="activePreviewUrl()" :src="activePreviewUrl()" class="w-full h-full object-contain pointer-events-none" alt="Preview" />
           <div class="crop-box-overlay"
                :style="`left:${editModal.facecam_box.x*100}%; top:${editModal.facecam_box.y*100}%; width:${editModal.facecam_box.w*100}%; height:${editModal.facecam_box.h*100}%;`">
-            <span class="crop-box-label">🎥 FACECAM</span>
+            <span class="crop-box-label">FACECAM REGION</span>
           </div>
         </div>
       </div>
 
-      <div class="flex justify-end gap-2.5 mt-6 pt-4 border-t border-inherit">
-        <button @click="editModal.open = false" class="px-4 py-2 rounded-lg border border-slate-500/20 text-xs font-semibold">Batal</button>
-        <button @click="saveClipEdit(false)" class="px-4 py-2 rounded-lg bg-slate-700 text-white text-xs font-semibold">Simpan Info Saja</button>
-        <button @click="saveClipEdit(true)" class="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow">
-          🎬 Simpan &amp; Re-Render 9:16
+      <div class="flex justify-end gap-2.5 mt-6 pt-4 border-t border-white/[0.08]">
+        <button @click="editModal.open = false" class="px-4 py-2 rounded-xl bg-white/[0.06] text-xs font-semibold">Cancel</button>
+        <button @click="saveClipEdit(false)" class="px-4 py-2 rounded-xl bg-white/[0.1] text-white text-xs font-semibold">Save Text Only</button>
+        <button @click="saveClipEdit(true)" class="px-5 py-2 rounded-xl btn-studio-primary text-xs">
+          Save &amp; Re-Render 9:16
         </button>
       </div>
     </div>
