@@ -269,7 +269,10 @@ def download_subtitles_and_chat(
         except subprocess.TimeoutExpired:
             pass
 
-    live_chat_files = list(proj_dir.glob("*live_chat*.json"))
+    live_chat_files = sorted(
+        proj_dir.glob("*live_chat*.json*"),
+        key=lambda p: (p.name.endswith(".part"), -p.stat().st_size),
+    )
     sub_files = [
         p for p in proj_dir.glob("source.*")
         if p.suffix.lower() in {".json3", ".vtt", ".srt"} and "live_chat" not in p.name
@@ -354,13 +357,14 @@ def download_video_section(
     et = max(st + 2.0, float(end_time))
     out_template = str(output_path.with_suffix(".%(ext)s"))
 
+    # Prefer H.264 (avc1) over AV1 to avoid slow software decoding/re-encoding during section download;
+    # omit --force-keyframes-at-cuts because render_vertical_clip re-encodes accurately to H.264.
     cmd = [
         _yt_dlp_bin(),
         "--no-playlist",
         "--no-warnings",
-        "-f", f"bestvideo[height<={max_height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={max_height}][ext=mp4]/best[height<={max_height}]/best",
+        "-f", f"bestvideo[height<={max_height}][vcodec^=avc1][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<={max_height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={max_height}][ext=mp4]/best[height<={max_height}]/best",
         "--download-sections", f"*{st:.2f}-{et:.2f}",
-        "--force-keyframes-at-cuts",
         "--merge-output-format", "mp4",
         "-o", out_template,
         url,
@@ -372,9 +376,8 @@ def download_video_section(
             _yt_dlp_bin(),
             "--no-playlist",
             "--no-warnings",
-            "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720]/best",
+            "-f", "bestvideo[height<=720][vcodec^=avc1][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720]/best",
             "--download-sections", f"*{st:.2f}-{et:.2f}",
-            "--force-keyframes-at-cuts",
             "--merge-output-format", "mp4",
             "-o", out_template,
             url,
