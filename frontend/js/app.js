@@ -126,14 +126,31 @@ function smartClipsApp() {
 
     pageTitle() {
       const titles = {
-        overview: '📊 Dashboard Overview',
-        create: '➕ Buat Klip Baru dari YouTube',
-        projects: '📁 Manajemen Proyek Video',
-        clips: '🎬 Galeri Klip 9:16 Siap Posting',
-        live: '🔴 Live Stream Auto-Clipper',
-        settings: '⚙️ Pengaturan AI & Integrasi Sosmed',
+        overview: 'Studio Overview',
+        create: 'AI Viral Clip Generator',
+        projects: 'Source YouTube Pipelines',
+        clips: '9:16 Shorts Library',
+        live: 'Live Stream Radar',
+        settings: 'API & Cloud Publishing',
       };
       return titles[this.activeTab] || 'Smart-Clips AI';
+    },
+
+    playHoverVideo(cardEl) {
+      const vid = cardEl.querySelector('.hover-preview-video');
+      if (vid) {
+        vid.style.opacity = '1';
+        vid.play().catch(() => {});
+      }
+    },
+
+    stopHoverVideo(cardEl) {
+      const vid = cardEl.querySelector('.hover-preview-video');
+      if (vid) {
+        vid.pause();
+        vid.currentTime = 0;
+        vid.style.opacity = '0';
+      }
     },
 
     topViralityScore() {
@@ -291,7 +308,7 @@ function smartClipsApp() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Gagal membuat proyek');
 
-        this.notify('🚀 Proyek dimulai! Pantau progresnya di halaman Daftar Proyek.');
+        this.notify('Proyek dimulai! Pantau progresnya di halaman Source Projects.');
         this.form.youtube_url = '';
         this.inspectedInfo = null;
         await this.fetchProjects();
@@ -327,7 +344,7 @@ function smartClipsApp() {
         if (!res.ok) throw new Error(data.detail || 'Gagal memulai live monitor');
         this.liveForm.youtube_url = '';
         await this.fetchLiveMonitors();
-        this.notify('🔴 Real-Time Live Monitor aktif!');
+        this.notify('Real-Time Live Radar aktif!');
       } catch (e) {
         this.notify(e.message, 'error');
       }
@@ -354,7 +371,7 @@ function smartClipsApp() {
       try {
         const res = await fetch(`/api/projects/${projectId}/retry`, { method: 'POST' });
         if (!res.ok) throw new Error('Gagal memulai ulang proyek');
-        this.notify('⚡ Turbo Mode dimulai!');
+        this.notify('Turbo Mode dimulai!');
         await this.fetchProjects();
       } catch (e) {
         this.notify(e.message, 'error');
@@ -365,7 +382,7 @@ function smartClipsApp() {
       try {
         const res = await fetch(`/api/projects/${projectId}/reanalyze`, { method: 'POST' });
         if (!res.ok) throw new Error('Gagal memulai analisis ulang');
-        this.notify('🎯 AI Viral Director V2 sedang mencari ulang momen & Hook 0:00 terbaik...');
+        this.notify('AI Viral Director V2 sedang mencari ulang momen & Hook 0:00 terbaik...');
         await this.fetchProjects();
         this.activeTab = 'projects';
       } catch (e) {
