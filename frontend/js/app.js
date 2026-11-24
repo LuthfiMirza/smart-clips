@@ -299,6 +299,18 @@ function smartClipsApp() {
       }
     },
 
+    async reanalyzeProject(projectId) {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/reanalyze`, { method: 'POST' });
+        if (!res.ok) throw new Error('Gagal memulai analisis ulang');
+        this.notify('🎯 AI Viral Director V2 sedang mencari ulang momen & Hook 0:00 terbaik...');
+        await this.fetchProjects();
+        await this.openProject(projectId, true);
+      } catch (e) {
+        this.notify(e.message, 'error');
+      }
+    },
+
     async deleteClip(clipId) {
       if (!confirm('Hapus klip ini?')) return;
       await fetch(`/api/clips/${clipId}`, { method: 'DELETE' });
