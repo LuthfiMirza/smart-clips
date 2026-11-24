@@ -1,71 +1,141 @@
-/* Smart-Clips AI Studio — Custom Styles */
+/* Smart-Clips AI — Modern Clean SaaS Admin Dashboard (Shadcn / Linear / Vercel Style) */
 :root {
-  --bg-main: #090b12;
-  --bg-card: #111524;
-  --bg-elevated: #171c30;
-  --accent-primary: #7c3aed;
-  --accent-glow: rgba(124, 58, 237, 0.35);
+  --sidebar-width: 260px;
 }
 
 body {
-  background: radial-gradient(circle at 12% 0%, rgba(124, 58, 237, 0.14), transparent 40%),
-              radial-gradient(circle at 88% 15%, rgba(6, 182, 212, 0.11), transparent 38%),
-              var(--bg-main);
-  color: #f1f5f9;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
 }
 
-.glass-card {
-  background: rgba(17, 21, 36, 0.82);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Dark theme (Default - Slate/Zinc Linear style) */
+html.dark body {
+  background-color: #090d16;
+  color: #f8fafc;
 }
 
+html.dark .admin-sidebar {
+  background-color: #0d1322;
+  border-color: #1e293b;
+}
+
+html.dark .admin-header {
+  background-color: rgba(13, 19, 34, 0.85);
+  border-color: #1e293b;
+}
+
+html.dark .admin-card {
+  background-color: #111827;
+  border: 1px solid #1f2937;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+html.dark .admin-input {
+  background-color: #090d16;
+  border: 1px solid #334155;
+  color: #f8fafc;
+}
+
+html.dark .admin-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+html.dark .admin-subcard {
+  background-color: #0b101d;
+  border: 1px solid #1e293b;
+}
+
+/* Light theme (Clean Stripe / Notion / Shadcn Light style) */
+html:not(.dark) body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+html:not(.dark) .admin-sidebar {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+}
+
+html:not(.dark) .admin-header {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-color: #e2e8f0;
+}
+
+html:not(.dark) .admin-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+html:not(.dark) .admin-input {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+}
+
+html:not(.dark) .admin-input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+html:not(.dark) .admin-subcard {
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+html:not(.dark) .text-muted {
+  color: #64748b;
+}
+
+html.dark .text-muted {
+  color: #94a3b8;
+}
+
+/* 9:16 Vertical Video Preview Frame */
 .phone-frame {
   aspect-ratio: 9 / 16;
   background: #000;
-  border-radius: 18px;
+  border-radius: 14px;
   overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
+/* Interactive Facecam Crop Stage */
 .crop-stage {
   position: relative;
   user-select: none;
   cursor: crosshair;
   overflow: hidden;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
 .crop-box-overlay {
   position: absolute;
-  border: 3px solid #facc15;
+  border: 2.5px solid #facc15;
   background: rgba(250, 204, 21, 0.18);
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
   pointer-events: none;
-  border-radius: 6px;
+  border-radius: 5px;
 }
 
 .crop-box-label {
   position: absolute;
-  top: -26px;
+  top: -24px;
   left: 0;
   background: #facc15;
   color: #090b12;
   font-size: 11px;
   font-weight: 800;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 4px;
   white-space: nowrap;
 }
 
-/* Pulse dot for Live Watcher */
 @keyframes livePulse {
   0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 
@@ -73,8 +143,7 @@ body {
   animation: livePulse 1.8s infinite;
 }
 
-/* Custom sleek scrollbar */
-::-webkit-scrollbar { width: 7px; height: 7px; }
-::-webkit-scrollbar-track { background: #0b0e18; }
-::-webkit-scrollbar-thumb { background: #29324d; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #475569; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.5); }
