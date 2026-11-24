@@ -132,10 +132,10 @@ def auto_detect_facecam_box(video_path: Path, sample_count: int = 8) -> Dict[str
     med_w = float(np.median([c[2] for c in face_centers]))
     med_h = float(np.median([c[3] for c in face_centers]))
 
-    box_w = min(0.38, max(0.24, med_w * 3.2))
-    box_h = min(0.45, max(0.30, med_h * 2.8))
+    box_w = min(0.32, max(0.20, med_w * 2.5))
+    box_h = min(0.36, max(0.24, med_h * 2.2))
     box_x = max(0.0, min(1.0 - box_w, med_x - box_w / 2.0))
-    box_y = max(0.0, min(1.0 - box_h, med_y - box_h * 0.45))
+    box_y = max(0.0, min(1.0 - box_h, med_y - box_h * 0.42))
 
     if med_x >= 0.5 and med_y >= 0.5:
         preset = "bottom_right"
