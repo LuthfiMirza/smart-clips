@@ -1,737 +1,791 @@
-<!DOCTYPE html>
-<html lang="id" class="dark">
+<!doctype html>
+<html lang="id">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Smart-Clips AI — Next-Gen Video Clipping Studio</title>
+  <meta name="color-scheme" content="light dark" />
+  <script>
+    try {
+      const savedScheme = localStorage.getItem('color-scheme');
+      const m = document.querySelector('meta[name="color-scheme"]');
+      if (m) m.content = savedScheme ?? 'light dark';
+      const isDark = savedScheme === 'dark';
+      if (isDark) document.documentElement.classList.add('dark');
+    } catch (e) {}
+  </script>
+  <title>SmartClips Dashboard | TailAdmin AI Video Clipper</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = { darkMode: 'class' };
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#ECF3FF',
+              100: '#DDE9FF',
+              200: '#C2D6FF',
+              400: '#7592FF',
+              500: '#465FFF',
+              600: '#3641F5',
+            },
+            gray: {
+              50: '#F9FAFB',
+              100: '#F2F4F7',
+              200: '#E4E7EC',
+              300: '#D0D5DD',
+              400: '#98A2B3',
+              500: '#667085',
+              600: '#475467',
+              700: '#344054',
+              800: '#1D2939',
+              900: '#101828',
+              950: '#0C111D',
+            },
+          },
+        },
+      },
+    };
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
   <link rel="stylesheet" href="/static/css/custom.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
-<body x-data="smartClipsApp()" x-init="init()" class="antialiased selection:bg-violet-600 selection:text-white">
+<body x-data="smartClipsApp()" x-init="init()"
+      @keydown.window="(e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $refs.searchInput?.focus(); } }"
+      class="bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-white/90 antialiased">
 
-  <!-- Toast Notification (Pure SVG Icon) -->
-  <div x-show="toast.show" x-transition
-       class="fixed bottom-6 right-6 z-50 max-w-md px-4 py-3.5 rounded-xl shadow-2xl border flex items-center gap-3 text-xs font-semibold backdrop-blur-xl"
-       :class="toast.type === 'error' ? 'bg-red-950/90 text-red-100 border-red-500/40' : 'bg-[#121626]/95 text-white border-violet-500/40'"
-       style="display:none;">
-    <template x-if="toast.type !== 'error'">
-      <svg class="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
-    </template>
-    <template x-if="toast.type === 'error'">
-      <svg class="w-4 h-4 text-red-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
-    </template>
+  <!-- Toast Notification -->
+  <div x-cloak x-show="toast.show" x-transition
+       class="fixed bottom-5 right-5 z-[99999] max-w-md px-4 py-3 rounded-xl shadow-lg border flex items-center gap-3 text-sm font-medium"
+       :class="toast.type === 'error' ? 'bg-red-600 text-white border-red-500' : 'bg-gray-900 text-white border-gray-800 dark:bg-brand-500 dark:border-brand-400'">
+    <svg x-show="toast.type !== 'error'" class="w-4 h-4 text-emerald-400 dark:text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+    <svg x-show="toast.type === 'error'" class="w-4 h-4 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
     <span x-text="toast.message"></span>
   </div>
 
-  <div class="flex min-h-screen">
+  <!-- ===== Page Wrapper Start (TailAdmin Exact Layout) ===== -->
+  <div class="flex h-screen overflow-hidden">
 
-    <!-- ==================== FIXED LEFT SIDEBAR (OPUSCLIP / RUNWAY STYLE) ==================== -->
-    <aside class="studio-sidebar w-64 shrink-0 flex flex-col justify-between sticky top-0 h-screen z-30 select-none">
-      <div>
-        <!-- Brand Header -->
-        <div class="h-16 px-5 flex items-center justify-between border-b border-white/[0.06]">
-          <div class="flex items-center gap-3 cursor-pointer" @click="navigate('overview')">
-            <div class="w-9 h-9 rounded-xl btn-studio-primary flex items-center justify-center shadow-lg">
-              <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <polygon points="23 7 16 12 23 17 23 7"/><rect width="15" height="14" x="1" y="5" rx="2" ry="2"/>
-              </svg>
-            </div>
-            <div>
-              <div class="font-extrabold text-sm tracking-tight flex items-center gap-1.5">
-                SmartClips
-                <span class="font-mono-code text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-violet-500/15 text-violet-300 border border-violet-500/30">PRO</span>
-              </div>
-              <div class="text-[11px] text-slate-400">AI Viral Studio</div>
-            </div>
+    <!-- Mobile Sidebar Backdrop -->
+    <div x-cloak x-show="mobileMenuOpen" @click="mobileMenuOpen = false" x-transition.opacity
+         class="fixed inset-0 z-40 bg-gray-900/50 backdrop-blur-xs xl:hidden" aria-hidden="true"></div>
+
+    <!-- ===== Sidebar Start (TailAdmin Exact 290px White/Dark Collapsible Sidebar) ===== -->
+    <aside :class="[
+             sidebarCollapsed ? 'xl:w-[90px]' : 'xl:w-[290px]',
+             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full xl:translate-x-0'
+           ]"
+           class="fixed top-0 left-0 z-50 flex h-screen w-[290px] flex-col border-r border-gray-200 bg-white px-5 transition-all duration-300 xl:static dark:border-gray-800 dark:bg-gray-950"
+           aria-label="Sidebar Navigation">
+
+      <!-- Sidebar Logo Header (Exact TailAdmin Brand Mark) -->
+      <div class="flex items-center justify-between pt-7 pb-6" :class="sidebarCollapsed ? 'xl:justify-center' : ''">
+        <button type="button" @click="navigate('overview')" class="flex items-center gap-2.5 text-left">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white shadow-sm">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="4" y="10" width="3.5" height="9" rx="1.5"/>
+              <rect x="10.25" y="5" width="3.5" height="14" rx="1.5"/>
+              <rect x="16.5" y="8" width="3.5" height="11" rx="1.5"/>
+            </svg>
           </div>
-        </div>
-
-        <!-- Quick New Clip CTA inside Sidebar -->
-        <div class="p-3.5 pb-1">
-          <button @click="navigate('create')"
-                  class="w-full py-2.5 px-3.5 rounded-xl btn-studio-primary text-xs font-bold flex items-center justify-center gap-2">
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-            <span>New Viral Project</span>
-          </button>
-        </div>
-
-        <!-- Navigation Menu (100% Vector SVGs) -->
-        <div class="p-3 space-y-6">
-          <div>
-            <div class="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">Workspace</div>
-            <nav class="space-y-1">
-              <button @click="navigate('overview')"
-                      :class="activeTab === 'overview' ? 'nav-item-active' : ''"
-                      class="nav-item w-full">
-                <span class="flex items-center gap-3">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
-                  <span>Overview</span>
-                </span>
-              </button>
-
-              <button @click="navigate('create')"
-                      :class="activeTab === 'create' ? 'nav-item-active' : ''"
-                      class="nav-item w-full">
-                <span class="flex items-center gap-3">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-                  <span>AI Clip Generator</span>
-                </span>
-              </button>
-
-              <button @click="navigate('clips')"
-                      :class="activeTab === 'clips' ? 'nav-item-active' : ''"
-                      class="nav-item w-full">
-                <span class="flex items-center gap-3">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></svg>
-                  <span>Clip Library (9:16)</span>
-                </span>
-                <span class="font-mono-code text-[11px] px-2 py-0.5 rounded-md bg-white/[0.06] text-slate-300" x-text="allClips.length"></span>
-              </button>
-
-              <button @click="navigate('projects')"
-                      :class="activeTab === 'projects' ? 'nav-item-active' : ''"
-                      class="nav-item w-full">
-                <span class="flex items-center gap-3">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
-                  <span>Source Projects</span>
-                </span>
-                <span class="font-mono-code text-[11px] px-2 py-0.5 rounded-md bg-white/[0.06] text-slate-300" x-text="projects.length"></span>
-              </button>
-
-              <button @click="navigate('live')"
-                      :class="activeTab === 'live' ? 'nav-item-active' : ''"
-                      class="nav-item w-full">
-                <span class="flex items-center gap-3">
-                  <svg class="w-4 h-4 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
-                  <span>Live Stream Radar</span>
-                </span>
-                <span x-show="activeLiveCount() > 0" class="font-mono-code text-[10px] px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold" x-text="activeLiveCount()"></span>
-              </button>
-            </nav>
-          </div>
-
-          <div>
-            <div class="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">Configuration</div>
-            <nav class="space-y-1">
-              <button @click="navigate('settings')"
-                      :class="activeTab === 'settings' ? 'nav-item-active' : ''"
-                      class="nav-item w-full">
-                <span class="flex items-center gap-3">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                  <span>API &amp; Social Auth</span>
-                </span>
-              </button>
-            </nav>
-          </div>
-        </div>
+          <span x-show="!sidebarCollapsed" class="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+            SmartClips
+          </span>
+        </button>
       </div>
 
-      <!-- Engine Telemetry Card in Sidebar Footer -->
-      <div class="p-3.5 m-3 rounded-xl studio-subcard space-y-2.5">
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] font-semibold text-slate-400">AI Director Engine</span>
-          <span class="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            <span x-text="health.gemini_configured ? 'Gemini 4' : 'Hook V2'"></span>
-          </span>
-        </div>
-        <div class="flex items-center justify-between text-[11px]">
-          <span class="text-slate-500">Hover Preview</span>
-          <span class="font-mono-code text-violet-400 font-semibold">Auto-Play</span>
-        </div>
+      <!-- Sidebar Navigation Groups -->
+      <div class="no-scrollbar flex flex-1 flex-col overflow-y-auto duration-300 ease-linear">
+        <nav class="space-y-6">
+          <!-- MENU GROUP -->
+          <div>
+            <h2 class="mb-3 flex text-xs font-medium uppercase tracking-wider text-gray-400"
+                :class="sidebarCollapsed ? 'xl:justify-center' : 'px-3'">
+              <span x-show="!sidebarCollapsed">MENU</span>
+              <svg x-show="sidebarCollapsed" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg>
+            </h2>
+
+            <ul class="flex flex-col gap-1.5">
+              <li>
+                <button type="button" @click="navigate('overview')"
+                        :class="[activeTab === 'overview' ? 'menu-item-active' : 'menu-item-inactive', sidebarCollapsed ? 'xl:justify-center' : '']"
+                        class="menu-item">
+                  <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="7" height="7" x="3" y="3" rx="1.5"/><rect width="7" height="7" x="14" y="3" rx="1.5"/><rect width="7" height="7" x="14" y="14" rx="1.5"/><rect width="7" height="7" x="3" y="14" rx="1.5"/></svg>
+                  <span x-show="!sidebarCollapsed" class="flex-1">Dashboard</span>
+                </button>
+              </li>
+
+              <li>
+                <button type="button" @click="navigate('create')"
+                        :class="[activeTab === 'create' ? 'menu-item-active' : 'menu-item-inactive', sidebarCollapsed ? 'xl:justify-center' : '']"
+                        class="menu-item">
+                  <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+                  <span x-show="!sidebarCollapsed" class="flex-1">AI Clip Generator</span>
+                  <span x-show="!sidebarCollapsed" class="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-500 dark:bg-brand-500/20 dark:text-brand-400">NEW</span>
+                </button>
+              </li>
+
+              <li>
+                <button type="button" @click="navigate('clips')"
+                        :class="[activeTab === 'clips' ? 'menu-item-active' : 'menu-item-inactive', sidebarCollapsed ? 'xl:justify-center' : '']"
+                        class="menu-item">
+                  <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m10 8 6 4-6 4V8Z"/></svg>
+                  <span x-show="!sidebarCollapsed" class="flex-1">Clips Library 9:16</span>
+                  <span x-show="!sidebarCollapsed" class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300" x-text="allClips.length"></span>
+                </button>
+              </li>
+
+              <li>
+                <button type="button" @click="navigate('projects')"
+                        :class="[activeTab === 'projects' ? 'menu-item-active' : 'menu-item-inactive', sidebarCollapsed ? 'xl:justify-center' : '']"
+                        class="menu-item">
+                  <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+                  <span x-show="!sidebarCollapsed" class="flex-1">Source Projects</span>
+                  <span x-show="!sidebarCollapsed" class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300" x-text="projects.length"></span>
+                </button>
+              </li>
+
+              <li>
+                <button type="button" @click="navigate('live')"
+                        :class="[activeTab === 'live' ? 'menu-item-active' : 'menu-item-inactive', sidebarCollapsed ? 'xl:justify-center' : '']"
+                        class="menu-item">
+                  <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+                  <span x-show="!sidebarCollapsed" class="flex-1">Live Stream Monitor</span>
+                  <span x-show="!sidebarCollapsed && activeLiveCount() > 0" class="rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-bold text-white" x-text="activeLiveCount()"></span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <!-- OTHERS GROUP -->
+          <div>
+            <h2 class="mb-3 flex text-xs font-medium uppercase tracking-wider text-gray-400"
+                :class="sidebarCollapsed ? 'xl:justify-center' : 'px-3'">
+              <span x-show="!sidebarCollapsed">OTHERS</span>
+              <svg x-show="sidebarCollapsed" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg>
+            </h2>
+
+            <ul class="flex flex-col gap-1.5">
+              <li>
+                <button type="button" @click="navigate('settings')"
+                        :class="[activeTab === 'settings' ? 'menu-item-active' : 'menu-item-inactive', sidebarCollapsed ? 'xl:justify-center' : '']"
+                        class="menu-item">
+                  <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <span x-show="!sidebarCollapsed" class="flex-1">API &amp; Social Auth</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+        </nav>
+      </div>
+
+      <!-- TailAdmin Bottom Sidebar Widget Card -->
+      <div x-show="!sidebarCollapsed" class="mb-5 mt-4 rounded-2xl bg-gray-50 px-4 py-5 text-center dark:bg-white/[0.03] border border-gray-100 dark:border-gray-800">
+        <h3 class="mb-1.5 font-semibold text-sm text-gray-900 dark:text-white">SmartClips Hook Engine V2</h3>
+        <p class="mb-4 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+          Auto-detect momen viral, split-screen Gaming &amp; Podcast, langsung ke TikTok &amp; IG.
+        </p>
+        <button type="button" @click="navigate('create')"
+                class="flex w-full items-center justify-center rounded-lg bg-brand-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition">
+          + Buat Klip Baru
+        </button>
       </div>
     </aside>
+    <!-- ===== Sidebar End ===== -->
 
-    <!-- ==================== MAIN WORKSPACE AREA ==================== -->
-    <div class="flex-1 flex flex-col min-w-0">
+    <!-- ===== Content Area Start ===== -->
+    <div class="relative flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
 
-      <!-- Sticky Top Studio Bar -->
-      <header class="studio-header h-16 px-7 sticky top-0 z-20 flex items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <h1 class="font-extrabold text-base sm:text-lg tracking-tight" x-text="pageTitle()"></h1>
-          <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-white/[0.04] border border-white/[0.07] text-slate-400">
-            <svg class="w-3 h-3 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            <span>Turbo 1080×1920 Pipeline</span>
-          </span>
-        </div>
+      <!-- ===== Header Start (Exact TailAdmin v2 Header with Toggle, ⌘K Search, Theme Circle, Bell, Profile) ===== -->
+      <header class="sticky top-0 z-30 flex w-full shrink-0 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
+        <div class="flex grow items-center justify-between gap-4 px-4 py-3.5 xl:px-6">
+          <!-- Left: Sidebar Hamburger + Search Bar with ⌘K -->
+          <div class="flex items-center gap-3 sm:gap-4 flex-1">
+            <!-- Desktop Collapse / Mobile Drawer Toggle -->
+            <button type="button" @click="toggleSidebar()" aria-label="Toggle Sidebar"
+                    class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white transition">
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M0.583252 1C0.583252 0.585788 0.919038 0.25 1.33325 0.25H14.6666C15.0808 0.25 15.4166 0.585786 15.4166 1C15.4166 1.41421 15.0808 1.75 14.6666 1.75L1.33325 1.75C0.919038 1.75 0.583252 1.41422 0.583252 1ZM0.583252 11C0.583252 10.5858 0.919038 10.25 1.33325 10.25L14.6666 10.25C15.0808 10.25 15.4166 10.5858 15.4166 11C15.4166 11.4142 15.0808 11.75 14.6666 11.75L1.33325 11.75C0.919038 11.75 0.583252 11.4142 0.583252 11ZM1.33325 5.25C0.919038 5.25 0.583252 5.58579 0.583252 6C0.583252 6.41421 0.919038 6.75 1.33325 6.75L7.99992 6.75C8.41413 6.75 8.74992 6.41421 8.74992 6C8.74992 5.58579 8.41413 5.25 7.99992 5.25L1.33325 5.25Z" fill="currentColor"/>
+              </svg>
+            </button>
 
-        <div class="flex items-center gap-3">
-          <!-- Theme Switcher (SVG Sun/Moon) -->
-          <button @click="toggleTheme()"
-                  class="p-2 rounded-xl border border-white/[0.08] hover:bg-white/[0.05] text-slate-300 transition"
-                  title="Switch Dark / Light Theme">
-            <template x-if="darkMode">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-            </template>
-            <template x-if="!darkMode">
-              <svg class="w-4 h-4 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-            </template>
-          </button>
+            <!-- TailAdmin Search Input with ⌘K -->
+            <div class="relative hidden sm:block w-full max-w-[420px]">
+              <span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-gray-400">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              </span>
+              <input x-ref="searchInput" type="search" x-model="searchQuery" @keydown.enter="if (searchQuery.trim()) navigate('clips')"
+                     placeholder="Search clips, hooks, or projects..."
+                     class="ta-input h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pr-16 pl-11 text-sm text-gray-800 placeholder:text-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90" />
+              <kbd class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 inline-flex items-center gap-0.5 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] font-medium text-gray-500 dark:border-gray-800 dark:bg-white/[0.04] dark:text-gray-400">
+                <span>⌘</span><span>K</span>
+              </kbd>
+            </div>
+          </div>
 
-          <!-- Create Quick CTA -->
-          <button x-show="activeTab !== 'create'" @click="navigate('create')"
-                  class="px-4 py-2 rounded-xl btn-studio-primary text-xs flex items-center gap-2">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-            <span>Paste YouTube Link</span>
-          </button>
+          <!-- Right: Theme Toggle Circle, Notification Bell, User Profile -->
+          <div class="flex items-center gap-3">
+            <!-- Theme Toggle (modern-web-guidance: dark-mode-toggle) -->
+            <button type="button" @click="toggleTheme()" aria-label="Toggle Dark or Light Mode"
+                    class="relative flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white transition">
+              <svg x-show="!darkMode" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+              <svg x-show="darkMode" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+            </button>
+
+            <!-- Notification Status Button -->
+            <button type="button" @click="navigate('projects')" aria-label="View Active Jobs"
+                    class="relative flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white transition">
+              <span x-show="projects.some(p => p.status === 'processing')" class="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-orange-500"></span>
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            </button>
+
+            <!-- User Profile Pill -->
+            <button type="button" @click="navigate('settings')" class="flex items-center gap-2.5 pl-1">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white">
+                LM
+              </div>
+              <div class="hidden md:block text-left">
+                <div class="text-sm font-medium text-gray-700 dark:text-gray-200 leading-tight">Luthfi Mirza</div>
+                <div class="text-xs text-gray-400" x-text="health.gemini_configured ? 'Gemini 4 Pro' : 'Hook V2 Local'"></div>
+              </div>
+            </button>
+          </div>
         </div>
       </header>
+      <!-- ===== Header End ===== -->
 
-      <!-- Workspace Content Container -->
-      <main class="p-7 max-w-[1440px] w-full mx-auto space-y-7">
+      <!-- ===== Main Content Area Start ===== -->
+      <main id="main-content" class="mx-auto w-full max-w-[1536px] p-4 md:p-6 space-y-6">
 
-        <!-- ==================== PAGE 1: OVERVIEW (BENTO GRID + HOVER AUTO-PLAY) ==================== -->
-        <div x-show="activeTab === 'overview'" x-transition.opacity class="space-y-7">
+        <!-- ==================== PAGE 1: TAILADMIN DASHBOARD OVERVIEW ==================== -->
+        <section x-show="activeTab === 'overview'" x-transition.opacity class="grid grid-cols-12 gap-4 md:gap-6">
 
-          <!-- 4 Bento KPI Cards with Vector Icons -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bento-card rounded-2xl p-5 flex items-start justify-between">
-              <div>
-                <div class="text-xs font-semibold text-slate-400">Rendered 9:16 Shorts</div>
-                <div class="font-mono-code text-3xl font-extrabold mt-2" x-text="allClips.filter(c => c.status === 'ready').length"></div>
-                <div class="text-[11px] text-emerald-400 font-medium mt-1.5 flex items-center gap-1">
-                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
-                  <span>H.264 1080×1920 Ready</span>
+          <!-- Left 7 Columns: 2 TailAdmin Metric Cards + Bar Chart -->
+          <div class="col-span-12 space-y-6 xl:col-span-7">
+            <!-- Metric Group (Exact TailAdmin 2-Card Row) -->
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
+              <!-- Metric 1: Clips Generated -->
+              <div class="rounded-2xl border border-gray-200 bg-white p-5 md:p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white/90">
+                  <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m10 8 6 4-6 4V8Z"/></svg>
+                </div>
+                <div class="mt-5 flex items-end justify-between">
+                  <div>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Rendered 9:16 Clips</span>
+                    <h4 class="mt-2 text-2xl font-bold text-gray-800 dark:text-white/90" x-text="allClips.filter(c => c.status === 'ready').length"></h4>
+                  </div>
+                  <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m18 15-6-6-6 6"/></svg>
+                    <span>1080p HD</span>
+                  </span>
                 </div>
               </div>
-              <div class="w-10 h-10 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center text-violet-400">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 8 6 4-6 4Z"/></svg>
+
+              <!-- Metric 2: Source Videos -->
+              <div class="rounded-2xl border border-gray-200 bg-white p-5 md:p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-white/90">
+                  <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                </div>
+                <div class="mt-5 flex items-end justify-between">
+                  <div>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">YouTube Projects</span>
+                    <h4 class="mt-2 text-2xl font-bold text-gray-800 dark:text-white/90" x-text="projects.length"></h4>
+                  </div>
+                  <span class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+                    <span>Turbo V2</span>
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div class="bento-card rounded-2xl p-5 flex items-start justify-between">
-              <div>
-                <div class="text-xs font-semibold text-slate-400">Peak Virality Score</div>
-                <div class="font-mono-code text-3xl font-extrabold mt-2 text-emerald-400" x-text="topViralityScore()"></div>
-                <div class="text-[11px] text-slate-400 mt-1.5">0:00 Hook-Snapping V2</div>
+            <!-- Bar Chart Card (TailAdmin Monthly Sales Style -> Virality Distribution per Clip) -->
+            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 pb-3 sm:px-6 sm:pt-6 dark:border-gray-800 dark:bg-white/[0.03]">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Clip Virality Scores</h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Skor viral tiap klip hasil AI Hook Engine V2</p>
+                </div>
+                <button type="button" @click="navigate('clips')" class="text-xs font-medium text-brand-500 hover:text-brand-600">
+                  Open Library &rarr;
+                </button>
               </div>
-              <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-              </div>
+              <div id="viralityBarChart" class="min-h-[210px]"></div>
             </div>
+          </div>
 
-            <div class="bento-card rounded-2xl p-5 flex items-start justify-between">
-              <div>
-                <div class="text-xs font-semibold text-slate-400">Source VODs &amp; Streams</div>
-                <div class="font-mono-code text-3xl font-extrabold mt-2" x-text="projects.length"></div>
-                <div class="text-[11px] text-cyan-400 mt-1.5" x-text="projects.filter(p => p.status === 'completed').length + ' completed pipelines'"></div>
-              </div>
-              <div class="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center text-cyan-400">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-              </div>
-            </div>
+          <!-- Right 5 Columns: Exact TailAdmin "Monthly Target" Semi-Circle Radial Gauge Card -->
+          <div class="col-span-12 xl:col-span-5">
+            <div class="flex h-full flex-col justify-between rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-white/[0.03]">
+              <div class="flex flex-1 flex-col justify-between rounded-2xl bg-white px-5 pt-5 pb-6 sm:px-6 sm:pt-6 dark:bg-gray-900">
+                <div class="flex justify-between">
+                  <div>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Viral Score Average</h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Rata-rata skor hook 0:00 seluruh klip Anda</p>
+                  </div>
+                  <span class="h-fit rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                    Hook V2
+                  </span>
+                </div>
 
-            <div class="bento-card rounded-2xl p-5 flex items-start justify-between">
-              <div>
-                <div class="text-xs font-semibold text-slate-400">Live Stream Radar</div>
-                <div class="font-mono-code text-3xl font-extrabold mt-2" x-text="activeLiveCount()"></div>
-                <div class="text-[11px] text-slate-400 mt-1.5">Rolling chunk monitors</div>
+                <div class="relative my-2 flex items-center justify-center">
+                  <div id="viralityRadialChart" class="w-full max-w-[330px]"></div>
+                </div>
+
+                <p class="mx-auto max-w-[340px] text-center text-sm text-gray-500 dark:text-gray-400">
+                  Klip terbaik Anda mencapai skor <span class="font-semibold text-gray-800 dark:text-white" x-text="topViralityScore() + '/100'"></span>. Siap di-export ke TikTok &amp; Instagram Reels!
+                </p>
               </div>
-              <div class="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/25 flex items-center justify-center text-rose-400">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49"/></svg>
+
+              <!-- TailAdmin Bottom 3-Metric Strip -->
+              <div class="flex items-center justify-center gap-5 px-6 py-4 sm:gap-8">
+                <div class="text-center">
+                  <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">Target Viral</p>
+                  <p class="text-base font-semibold text-gray-800 dark:text-white/90">85+</p>
+                </div>
+                <div class="h-7 w-px bg-gray-200 dark:bg-gray-800"></div>
+                <div class="text-center">
+                  <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">Avg Score</p>
+                  <p class="text-base font-semibold text-gray-800 dark:text-white/90" x-text="avgViralityScore()"></p>
+                </div>
+                <div class="h-7 w-px bg-gray-200 dark:bg-gray-800"></div>
+                <div class="text-center">
+                  <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">Peak Score</p>
+                  <p class="text-base font-semibold text-emerald-600 dark:text-emerald-400" x-text="topViralityScore()"></p>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Top Viral Clips Showcase (OpusClip 3.0 Cards with Circular Score Ring & Hover Auto-Play) -->
-          <div class="space-y-4" x-show="allClips.length > 0">
-            <div class="flex items-center justify-between">
-              <div>
-                <h2 class="text-base font-extrabold tracking-tight">Top Ranked Viral Shorts</h2>
-                <p class="text-xs text-slate-400 mt-0.5">Arahkan mouse ke kartu klip untuk <b>Auto-Play Preview 9:16</b>, atau klik untuk membuka Studio Inspector.</p>
+          <!-- Bottom Full-Width: TailAdmin "Recent Orders" Style -> Recent Viral Clips Table -->
+          <div class="col-span-12">
+            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 pb-4 sm:px-6 dark:border-gray-800 dark:bg-white/[0.03]">
+              <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Top Viral Clips Ready to Post</h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Klik <b>Preview &amp; Post</b> untuk memutar klip 9:16, edit kotak facecam, atau upload ke TikTok &amp; IG.</p>
+                </div>
+                <div class="flex items-center gap-2.5">
+                  <button type="button" @click="navigate('create')"
+                          class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-xs font-medium text-white hover:bg-brand-600 transition">
+                    + New Clip Project
+                  </button>
+                  <button type="button" @click="navigate('clips')"
+                          class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.05] transition">
+                    See all (<span x-text="allClips.length"></span>)
+                  </button>
+                </div>
               </div>
-              <button @click="navigate('clips')" class="text-xs font-bold text-violet-400 hover:text-violet-300 flex items-center gap-1.5">
-                <span>Explore All Clips (<span x-text="allClips.length"></span>)</span>
-                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-              </button>
-            </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              <template x-for="clip in allClips.slice(0, 4)" :key="clip.id">
-                <div class="bento-card bento-card-interactive rounded-2xl overflow-hidden flex flex-col justify-between group"
-                     @mouseenter="playHoverVideo($el)"
-                     @mouseleave="stopHoverVideo($el)">
-                  <!-- 9:16 Stage with Hover Video + Circular Virality Gauge -->
-                  <div class="aspect-[9/15] bg-black relative overflow-hidden cursor-pointer" @click="openClipStudio(clip)">
-                    <img x-show="clip.thumbnail_url" :src="clip.thumbnail_url"
-                         class="w-full h-full object-cover group-hover:scale-105 transition duration-500" alt="Clip Poster" />
-
-                    <!-- Hover Auto-Play Video Element -->
-                    <template x-if="clip.video_url">
-                      <video :src="clip.video_url" muted loop playsinline preload="none"
-                             class="hover-preview-video absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-300"></video>
+              <div tabindex="0" role="region" aria-label="Top Viral Clips Table" class="table-wrapper responsive-stack">
+                <table class="min-w-full">
+                  <thead>
+                    <tr class="border-y border-gray-100 dark:border-gray-800">
+                      <th scope="col" class="py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Clip &amp; Hook Banner</th>
+                      <th scope="col" class="py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Category</th>
+                      <th scope="col" class="py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Viral Score</th>
+                      <th scope="col" class="py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Status</th>
+                      <th scope="col" class="py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                    <template x-for="clip in allClips.slice(0, 6)" :key="clip.id">
+                      <tr class="hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition">
+                        <th scope="row" class="py-3.5 pr-4 text-left font-normal">
+                          <div class="flex items-center gap-3">
+                            <div @click="openClipStudio(clip)" class="h-14 w-9 shrink-0 cursor-pointer overflow-hidden rounded-md bg-gray-900 border border-gray-200 dark:border-gray-700">
+                              <img x-show="clip.thumbnail_url" :src="clip.thumbnail_url" class="h-full w-full object-cover" alt="Clip" />
+                            </div>
+                            <div class="min-w-0 max-w-md">
+                              <div class="text-xs font-semibold text-brand-500 dark:text-brand-400" x-text="clip.hook_text || 'VIRAL HOOK'"></div>
+                              <p class="truncate text-sm font-medium text-gray-800 dark:text-white/90" x-text="clip.title"></p>
+                              <span class="text-xs text-gray-500 dark:text-gray-400" x-text="formatDuration(clip.start_time) + ' - ' + formatDuration(clip.end_time) + ' (' + Math.round(clip.duration) + 's)'"></span>
+                            </div>
+                          </div>
+                        </th>
+                        <td data-label="Category" class="py-3.5 text-sm text-gray-500 dark:text-gray-400 capitalize" x-text="clip.category || 'highlight'"></td>
+                        <td data-label="Viral Score" class="py-3.5">
+                          <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                                :class="clip.virality_score >= 88 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400' : 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400'"
+                                x-text="clip.virality_score + ' / 100'"></span>
+                        </td>
+                        <td data-label="Status" class="py-3.5">
+                          <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                                :class="clip.status === 'ready' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400' : 'bg-amber-50 text-amber-600'"
+                                x-text="clip.status === 'ready' ? 'Ready' : clip.status"></span>
+                        </td>
+                        <td data-label="Actions" class="py-3.5 text-right whitespace-nowrap space-x-1.5">
+                          <button type="button" @click="openClipStudio(clip)"
+                                  class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition">
+                            Preview &amp; Post
+                          </button>
+                          <a :href="'/api/clips/' + clip.id + '/download'"
+                             class="inline-block rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 transition">
+                            MP4
+                          </a>
+                        </td>
+                      </tr>
                     </template>
-
-                    <!-- Top Left: Circular SVG Virality Score Gauge -->
-                    <div class="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/10">
-                      <div class="relative w-8 h-8 flex items-center justify-center">
-                        <svg class="w-8 h-8" viewBox="0 0 36 36">
-                          <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3.2"></circle>
-                          <circle class="score-ring-circle" cx="18" cy="18" r="15" fill="none"
-                                  :stroke="clip.virality_score >= 88 ? '#10b981' : '#f59e0b'"
-                                  stroke-width="3.2"
-                                  stroke-dasharray="94.2"
-                                  :stroke-dashoffset="94.2 - (94.2 * (clip.virality_score || 80)) / 100"
-                                  stroke-linecap="round"></circle>
-                        </svg>
-                        <span class="font-mono-code text-[11px] font-extrabold text-white absolute" x-text="clip.virality_score"></span>
-                      </div>
-                      <div class="leading-none pr-1">
-                        <div class="text-[9px] uppercase tracking-wider font-bold text-slate-400">VIRAL</div>
-                        <div class="text-[10px] font-bold text-emerald-400">SCORE</div>
-                      </div>
-                    </div>
-
-                    <!-- Top Right: Monospace Duration Pill -->
-                    <div class="absolute top-3 right-3 font-mono-code text-[11px] font-bold px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md text-white border border-white/10"
-                         x-text="Math.round(clip.duration) + 's'"></div>
-
-                    <!-- Bottom Overlay: Hook Banner & Title -->
-                    <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/75 to-transparent p-4 pt-12">
-                      <div class="inline-block px-2 py-0.5 rounded bg-amber-400 text-black font-extrabold text-[10px] uppercase tracking-wide mb-1.5"
-                           x-text="clip.hook_text || 'VIRAL HOOK'"></div>
-                      <h3 class="font-bold text-xs sm:text-sm text-white line-clamp-2 leading-snug" x-text="clip.title"></h3>
-                    </div>
-                  </div>
-
-                  <!-- Footer Action Bar (Pure SVG Buttons) -->
-                  <div class="p-3 bg-[#080a12]/90 border-t border-white/[0.06] flex items-center justify-between gap-2">
-                    <span class="font-mono-code text-[11px] text-slate-400" x-text="formatDuration(clip.start_time) + ' - ' + formatDuration(clip.end_time)"></span>
-                    <div class="flex items-center gap-1.5">
-                      <button @click="copyCaption(clip)" title="Copy Caption & Hashtags"
-                              class="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.12] text-slate-300 transition">
-                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                      </button>
-                      <a :href="'/api/clips/' + clip.id + '/download'" title="Download 1080x1920 MP4"
-                         class="p-2 rounded-lg bg-white/[0.05] hover:bg-emerald-500/20 text-emerald-400 transition">
-                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                      </a>
-                      <button @click="openClipStudio(clip)"
-                              class="px-3 py-1.5 rounded-lg btn-studio-primary text-xs font-bold">
-                        Studio
-                      </button>
-                    </div>
-                  </div>
+                  </tbody>
+                </table>
+                <div x-show="allClips.length === 0" class="py-10 text-center text-sm text-gray-500">
+                  Belum ada klip. Klik <b>AI Clip Generator</b> di sidebar kiri untuk membuat klip pertama Anda.
                 </div>
-              </template>
+              </div>
             </div>
           </div>
+        </section>
 
-          <!-- Active & Recent Source Projects Bento Table -->
-          <div class="bento-card rounded-2xl overflow-hidden">
-            <div class="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+        <!-- ==================== PAGE 2: AI CLIP GENERATOR (TAILADMIN FORM CARD) ==================== -->
+        <section x-cloak x-show="activeTab === 'create'" x-transition.opacity class="mx-auto max-w-4xl space-y-6">
+          <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-gray-800">
+              <h2 class="text-base font-semibold text-gray-800 dark:text-white/90">Create New AI Viral Clips</h2>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Paste link YouTube VOD atau Live Stream — otomatis memakai Turbo Mode untuk video panjang.</p>
+            </div>
+
+            <div class="p-6 space-y-6">
+              <!-- URL Input -->
               <div>
-                <h2 class="font-bold text-sm">Source YouTube Pipelines</h2>
-                <p class="text-xs text-slate-400">Daftar proyek VOD &amp; Live Stream yang telah diproses oleh AI Director V2.</p>
-              </div>
-              <button @click="navigate('projects')" class="text-xs font-bold text-violet-400 hover:text-violet-300">
-                Manage All &rarr;
-              </button>
-            </div>
-            <div class="divide-y divide-white/[0.05]">
-              <template x-for="p in projects.slice(0, 5)" :key="p.id">
-                <div class="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/[0.02] transition">
-                  <div class="flex items-center gap-4 min-w-0">
-                    <div class="w-24 h-14 rounded-xl bg-slate-900 overflow-hidden shrink-0 border border-white/10 relative">
-                      <img x-show="p.thumbnail_url" :src="p.thumbnail_url" class="w-full h-full object-cover" alt="Thumb" />
-                      <span x-show="p.duration > 0" class="font-mono-code absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/85 text-[10px] text-white font-bold"
-                            x-text="formatDuration(p.duration)"></span>
-                    </div>
-                    <div class="min-w-0">
-                      <div class="font-bold text-sm truncate" x-text="p.title || p.youtube_url"></div>
-                      <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">
-                        <span x-text="p.channel || 'YouTube'"></span>
-                        <span>•</span>
-                        <span class="font-mono-code text-[11px] px-2 py-0.5 rounded bg-violet-500/15 text-violet-300 border border-violet-500/25" x-text="p.layout_mode"></span>
-                        <span class="text-slate-500 truncate max-w-xs" x-text="p.status_message"></span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="flex items-center gap-2.5 shrink-0">
-                    <span class="font-mono-code text-xs font-bold px-2.5 py-1 rounded-lg bg-white/[0.05]"
-                          x-text="(p.clip_count || 0) + ' clips'"></span>
-                    <button @click="filterByProject(p.id)"
-                            class="px-3.5 py-2 rounded-xl btn-studio-primary text-xs">
-                      Open Clips
-                    </button>
-                  </div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">YouTube URL (VOD / Live Replay / Active Live)</label>
+                <div class="flex flex-col sm:flex-row gap-3">
+                  <input type="url" x-model="form.youtube_url" @keydown.enter="inspectUrl()"
+                         placeholder="https://www.youtube.com/watch?v=... atau https://www.youtube.com/live/..."
+                         class="ta-input h-11 flex-1 rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
+                  <button type="button" @click="inspectUrl()" :disabled="inspecting || !form.youtube_url.trim()"
+                          class="h-11 rounded-lg border border-gray-300 bg-white px-5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 transition whitespace-nowrap">
+                    <span x-text="inspecting ? 'Checking...' : 'Check Video Info'"></span>
+                  </button>
                 </div>
-              </template>
-            </div>
-          </div>
-        </div>
+              </div>
 
-        <!-- ==================== PAGE 2: AI CLIP GENERATOR (CREATE) ==================== -->
-        <div x-show="activeTab === 'create'" x-transition.opacity style="display:none;" class="max-w-4xl mx-auto space-y-6">
-          <div class="bento-card rounded-3xl p-7 space-y-7">
-            <div class="flex items-start justify-between gap-4">
+              <!-- Inspected Preview -->
+              <div x-show="inspectedInfo" x-transition class="flex flex-col sm:flex-row items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/60">
+                <img :src="inspectedInfo?.thumbnail_url" class="h-20 w-36 rounded-lg object-cover shrink-0" alt="Thumbnail" />
+                <div class="min-w-0 flex-1">
+                  <div class="mb-1 flex flex-wrap items-center gap-2">
+                    <span x-show="inspectedInfo?.is_live" class="rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-600">LIVE NOW</span>
+                    <span x-show="inspectedInfo?.turbo_recommended" class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">Turbo Mode Active</span>
+                    <span x-show="inspectedInfo?.has_live_chat" class="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">Live Chat Replay</span>
+                    <span class="text-xs text-gray-500" x-show="inspectedInfo?.duration > 0" x-text="formatDuration(inspectedInfo?.duration)"></span>
+                  </div>
+                  <div class="truncate text-sm font-semibold text-gray-800 dark:text-white" x-text="inspectedInfo?.title"></div>
+                  <div class="text-xs text-gray-500" x-text="inspectedInfo?.channel"></div>
+                </div>
+              </div>
+
+              <!-- Layout Selection Cards -->
               <div>
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-violet-500/15 text-violet-300 border border-violet-500/30 mb-2">
-                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                  <span>MULTI-FACTOR VIRAL &amp; HOOK ENGINE V2</span>
-                </span>
-                <h2 class="text-xl font-extrabold tracking-tight">Import YouTube VOD or Active Live Stream</h2>
-                <p class="text-xs text-slate-400 mt-1">Paste link YouTube—otomatis mengaktifkan <b>Turbo Mode</b> untuk stream panjang tanpa perlu download file video bergiga-giga.</p>
-              </div>
-            </div>
+                <label class="mb-2.5 block text-sm font-medium text-gray-700 dark:text-gray-300">9:16 Video Layout Mode</label>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <button type="button" @click="form.layout_mode = 'gaming_split'"
+                          :class="form.layout_mode === 'gaming_split' ? 'border-brand-500 bg-brand-50/60 dark:bg-brand-500/10 ring-1 ring-brand-500' : 'border-gray-200 dark:border-gray-800 hover:border-gray-300'"
+                          class="rounded-xl border p-4 text-left transition">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-sm font-semibold text-gray-900 dark:text-white">Gaming Split-Screen</span>
+                      <svg class="w-5 h-5 text-brand-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="14" height="20" x="5" y="2" rx="2"/><line x1="5" x2="19" y1="14" y2="14"/></svg>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Top 62% Gameplay + Bottom 38% Auto-Tracked Facecam.</p>
+                  </button>
 
-            <!-- URL Input Bar -->
-            <div class="flex flex-col sm:flex-row gap-3">
-              <div class="relative flex-1">
-                <input type="url" x-model="form.youtube_url" @keydown.enter="inspectUrl()"
-                       placeholder="https://www.youtube.com/watch?v=... atau https://www.youtube.com/live/..."
-                       class="studio-input w-full rounded-xl pl-4 pr-4 py-3.5 text-sm" />
-              </div>
-              <button @click="inspectUrl()" :disabled="inspecting || !form.youtube_url.trim()"
-                      class="px-5 py-3.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/10 disabled:opacity-40 text-xs font-bold transition flex items-center justify-center gap-2 whitespace-nowrap">
-                <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                <span x-text="inspecting ? 'Analyzing Stream...' : 'Analyze Link'"></span>
-              </button>
-            </div>
+                  <button type="button" @click="form.layout_mode = 'podcast'"
+                          :class="form.layout_mode === 'podcast' ? 'border-brand-500 bg-brand-50/60 dark:bg-brand-500/10 ring-1 ring-brand-500' : 'border-gray-200 dark:border-gray-800 hover:border-gray-300'"
+                          class="rounded-xl border p-4 text-left transition">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-sm font-semibold text-gray-900 dark:text-white">Podcast Face-Track</span>
+                      <svg class="w-5 h-5 text-brand-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Full 9:16 vertical camera following active speaker's face.</p>
+                  </button>
 
-            <!-- Inspected Stream Card -->
-            <div x-show="inspectedInfo" x-transition class="studio-subcard p-4 rounded-2xl flex flex-col sm:flex-row gap-4 items-center">
-              <img :src="inspectedInfo?.thumbnail_url" class="w-40 h-24 object-cover rounded-xl border border-white/10 shrink-0" alt="Thumbnail" />
-              <div class="flex-1 min-w-0">
-                <div class="flex flex-wrap items-center gap-2 mb-1.5">
-                  <span x-show="inspectedInfo?.is_live" class="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-extrabold uppercase">LIVE NOW</span>
-                  <span x-show="inspectedInfo?.turbo_recommended" class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">TURBO SECTION DOWNLOAD</span>
-                  <span x-show="inspectedInfo?.has_live_chat" class="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold">LIVE CHAT REPLAY</span>
-                  <span class="font-mono-code text-xs text-slate-400" x-show="inspectedInfo?.duration > 0" x-text="formatDuration(inspectedInfo?.duration)"></span>
+                  <button type="button" @click="form.layout_mode = 'blur_canvas'"
+                          :class="form.layout_mode === 'blur_canvas' ? 'border-brand-500 bg-brand-50/60 dark:bg-brand-500/10 ring-1 ring-brand-500' : 'border-gray-200 dark:border-gray-800 hover:border-gray-300'"
+                          class="rounded-xl border p-4 text-left transition">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-sm font-semibold text-gray-900 dark:text-white">16:9 Blur Canvas</span>
+                      <svg class="w-5 h-5 text-brand-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M3 10h18"/><path d="M3 14h18"/></svg>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Full 16:9 frame centered over blurred 9:16 backdrop.</p>
+                  </button>
                 </div>
-                <div class="font-bold text-sm truncate" x-text="inspectedInfo?.title"></div>
-                <div class="text-xs text-slate-400 mt-0.5" x-text="inspectedInfo?.channel"></div>
               </div>
-            </div>
 
-            <!-- Step 2: 3 Visual Framing Cards (SVG Diagrams) -->
-            <div class="pt-4 border-t border-white/[0.06]">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Select 9:16 Framing Architecture</label>
+              <!-- Dropdown Controls -->
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div @click="form.layout_mode = 'gaming_split'"
-                     :class="form.layout_mode === 'gaming_split' ? 'border-violet-500 bg-violet-500/10 ring-1 ring-violet-500/40' : 'border-white/[0.08] hover:border-white/20'"
-                     class="p-4 rounded-2xl border cursor-pointer transition flex flex-col justify-between">
-                  <div class="flex items-center justify-between mb-3">
-                    <span class="font-bold text-sm">Gaming Split-Screen</span>
-                    <svg class="w-5 h-5 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="20" x="5" y="2" rx="2"/><line x1="5" x2="19" y1="14" y2="14"/></svg>
-                  </div>
-                  <p class="text-xs text-slate-400 leading-relaxed">Top 62% Gameplay Action + Bottom 38% Auto-Tracked Streamer Facecam.</p>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Karaoke Subtitle Style</label>
+                  <select x-model="form.subtitle_style" class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                    <option value="karaoke_yellow">Opus Yellow Pop</option>
+                    <option value="karaoke_green">Emerald Green Pop</option>
+                    <option value="neon_cyan">Cyan Pop</option>
+                    <option value="clean_white">Clean White</option>
+                    <option value="none">No Subtitles</option>
+                  </select>
                 </div>
 
-                <div @click="form.layout_mode = 'podcast'"
-                     :class="form.layout_mode === 'podcast' ? 'border-violet-500 bg-violet-500/10 ring-1 ring-violet-500/40' : 'border-white/[0.08] hover:border-white/20'"
-                     class="p-4 rounded-2xl border cursor-pointer transition flex flex-col justify-between">
-                  <div class="flex items-center justify-between mb-3">
-                    <span class="font-bold text-sm">Podcast Face-Track</span>
-                    <svg class="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-                  </div>
-                  <p class="text-xs text-slate-400 leading-relaxed">Full 9:16 vertical crop with OpenCV 5 YuNet active speaker tracking.</p>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Facecam Position</label>
+                  <select x-model="form.facecam_preset" class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                    <option value="auto">Auto Detect Face (YuNet AI)</option>
+                    <option value="bottom_right">Bottom Right</option>
+                    <option value="bottom_left">Bottom Left</option>
+                    <option value="top_right">Top Right</option>
+                    <option value="top_left">Top Left</option>
+                    <option value="center_right">Center Right</option>
+                  </select>
                 </div>
 
-                <div @click="form.layout_mode = 'blur_canvas'"
-                     :class="form.layout_mode === 'blur_canvas' ? 'border-violet-500 bg-violet-500/10 ring-1 ring-violet-500/40' : 'border-white/[0.08] hover:border-white/20'"
-                     class="p-4 rounded-2xl border cursor-pointer transition flex flex-col justify-between">
-                  <div class="flex items-center justify-between mb-3">
-                    <span class="font-bold text-sm">16:9 Cinema Blur</span>
-                    <svg class="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M3 10h18"/><path d="M3 14h18"/></svg>
-                  </div>
-                  <p class="text-xs text-slate-400 leading-relaxed">Full uncropped 16:9 frame centered over an ambient blurred 9:16 canvas.</p>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Clips to Generate</label>
+                  <select x-model.number="form.clip_count" class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                    <option :value="3">Top 3 Viral Clips</option>
+                    <option :value="4">Top 4 Viral Clips</option>
+                    <option :value="5">Top 5 Viral Clips</option>
+                    <option :value="8">Top 8 Viral Clips</option>
+                  </select>
                 </div>
               </div>
-            </div>
 
-            <!-- Step 3: Controls Grid -->
-            <div class="pt-4 border-t border-white/[0.06] grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Karaoke Caption Style</label>
-                <select x-model="form.subtitle_style" class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold">
-                  <option value="karaoke_yellow">Opus Yellow Pop (Default)</option>
-                  <option value="karaoke_green">Neon Emerald Pop</option>
-                  <option value="neon_cyan">Cyber Cyan Pop</option>
-                  <option value="clean_white">Minimalist White</option>
-                  <option value="none">No Subtitles</option>
-                </select>
-              </div>
+              <!-- Footer Action -->
+              <div class="flex flex-wrap items-center justify-between gap-4 border-t border-gray-100 pt-5 dark:border-gray-800">
+                <label class="flex items-center gap-2.5 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+                  <input type="checkbox" x-model="form.hook_banner" class="h-4 w-4 rounded accent-brand-500" />
+                  <span>Include Upper Hook Banner (First 4 seconds)</span>
+                </label>
 
-              <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Facecam Quadrant</label>
-                <select x-model="form.facecam_preset" class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold">
-                  <option value="auto">AI YuNet Auto-Detect</option>
-                  <option value="bottom_right">Bottom Right</option>
-                  <option value="bottom_left">Bottom Left</option>
-                  <option value="top_right">Top Right</option>
-                  <option value="top_left">Top Left</option>
-                  <option value="center_right">Middle Right</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Number of Viral Shorts</label>
-                <select x-model.number="form.clip_count" class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold">
-                  <option :value="3">Top 3 Viral Clips</option>
-                  <option :value="4">Top 4 Viral Clips</option>
-                  <option :value="5">Top 5 Viral Clips</option>
-                  <option :value="8">Top 8 Viral Clips</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Action Footer -->
-            <div class="pt-4 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-4">
-              <label class="flex items-center gap-2.5 text-xs text-slate-300 cursor-pointer">
-                <input type="checkbox" x-model="form.hook_banner" class="rounded accent-violet-500 w-4 h-4" />
-                <span>Burn Upper Curiosity Hook Banner (First 4.2s)</span>
-              </label>
-
-              <div class="flex gap-3">
-                <button x-show="inspectedInfo?.is_live" @click="startLiveWatcherFromForm()"
-                        class="px-5 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg transition">
-                  Start Real-Time Live Radar
-                </button>
-                <button @click="createProject()" :disabled="submitting || !form.youtube_url.trim()"
-                        class="px-7 py-3 rounded-xl btn-studio-primary disabled:opacity-40 text-xs flex items-center gap-2">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                  <span x-text="submitting ? 'Launching Pipeline...' : 'Generate Viral Shorts'"></span>
-                </button>
+                <div class="flex gap-3">
+                  <button type="button" x-show="inspectedInfo?.is_live" @click="startLiveWatcherFromForm()"
+                          class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 transition">
+                    Start Live Monitor
+                  </button>
+                  <button type="button" @click="createProject()" :disabled="submitting || !form.youtube_url.trim()"
+                          class="rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-40 transition">
+                    <span x-text="submitting ? 'Starting Pipeline...' : 'Generate Smart Clips'"></span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- ==================== PAGE 3: CLIP LIBRARY (9:16 CATALOG WITH HOVER AUTO-PLAY) ==================== -->
-        <div x-show="activeTab === 'clips'" x-transition.opacity style="display:none;" class="space-y-6">
-          <!-- Filter Bar -->
-          <div class="bento-card rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <!-- ==================== PAGE 3: CLIPS LIBRARY (TAILADMIN 4-COL CATALOG + HOVER PREVIEW) ==================== -->
+        <section x-cloak x-show="activeTab === 'clips'" x-transition.opacity class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
             <div class="flex flex-wrap items-center gap-3">
-              <span class="text-xs font-bold text-slate-400">Source Project:</span>
-              <select x-model="clipFilterProjectId" class="studio-input rounded-xl px-3.5 py-2 text-xs font-semibold">
-                <option value="">All Projects (<span x-text="allClips.length"></span> Shorts)</option>
+              <label class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Filter Project:</label>
+              <select x-model="clipFilterProjectId" class="ta-input h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                <option value="">All Projects (<span x-text="allClips.length"></span> Clips)</option>
                 <template x-for="p in projects" :key="p.id">
-                  <option :value="p.id" x-text="(p.title || p.youtube_url).slice(0, 52) + ' (' + (p.clip_count || 0) + ')'"></option>
+                  <option :value="p.id" x-text="(p.title || p.youtube_url).slice(0, 50) + ' (' + (p.clip_count || 0) + ')'"></option>
                 </template>
               </select>
             </div>
 
             <div class="flex items-center gap-2.5" x-show="clipFilterProjectId">
-              <button @click="reanalyzeProject(clipFilterProjectId)"
-                      class="px-3.5 py-2 rounded-xl bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 border border-violet-500/30 text-xs font-bold flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-                <span>Re-Train Hook 0:00 (V2)</span>
+              <button type="button" @click="reanalyzeProject(clipFilterProjectId)"
+                      class="rounded-lg bg-brand-50 px-3.5 py-2 text-xs font-semibold text-brand-500 hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-400 transition">
+                Re-Train Hook 0:00 (V2)
               </button>
-              <button @click="clipFilterProjectId = ''" class="text-xs text-slate-400 hover:text-white">Reset</button>
+              <button type="button" @click="clipFilterProjectId = ''" class="text-xs font-medium text-gray-500 hover:text-gray-800 dark:hover:text-white">
+                Reset
+              </button>
             </div>
           </div>
 
-          <!-- 4-Column OpusClip Bento Grid -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <template x-for="clip in filteredClips()" :key="clip.id">
-              <div class="bento-card bento-card-interactive rounded-2xl overflow-hidden flex flex-col justify-between group"
+              <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white flex flex-col justify-between transition hover:shadow-md dark:border-gray-800 dark:bg-white/[0.03] group"
                    @mouseenter="playHoverVideo($el)"
                    @mouseleave="stopHoverVideo($el)">
                 <div>
-                  <div class="aspect-[9/15] bg-black relative overflow-hidden cursor-pointer" @click="openClipStudio(clip)">
-                    <img x-show="clip.thumbnail_url" :src="clip.thumbnail_url"
-                         class="w-full h-full object-cover group-hover:scale-105 transition duration-500" alt="Poster" />
-
+                  <!-- 9:16 Poster + Hover Auto-Play -->
+                  <div class="aspect-[9/14] bg-gray-950 relative overflow-hidden cursor-pointer" @click="openClipStudio(clip)">
+                    <img x-show="clip.thumbnail_url" :src="clip.thumbnail_url" class="h-full w-full object-cover" alt="Poster" />
                     <template x-if="clip.video_url">
                       <video :src="clip.video_url" muted loop playsinline preload="none"
-                             class="hover-preview-video absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-300"></video>
+                             class="hover-preview-video absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-200"></video>
                     </template>
-
-                    <!-- Circular SVG Score Ring -->
-                    <div class="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/10">
-                      <div class="relative w-8 h-8 flex items-center justify-center">
-                        <svg class="w-8 h-8" viewBox="0 0 36 36">
-                          <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3.2"></circle>
-                          <circle class="score-ring-circle" cx="18" cy="18" r="15" fill="none"
-                                  :stroke="clip.virality_score >= 88 ? '#10b981' : '#f59e0b'"
-                                  stroke-width="3.2"
-                                  stroke-dasharray="94.2"
-                                  :stroke-dashoffset="94.2 - (94.2 * (clip.virality_score || 80)) / 100"
-                                  stroke-linecap="round"></circle>
-                        </svg>
-                        <span class="font-mono-code text-[11px] font-extrabold text-white absolute" x-text="clip.virality_score"></span>
-                      </div>
-                      <div class="leading-none pr-1">
-                        <div class="text-[9px] uppercase font-bold text-slate-400">VIRAL</div>
-                        <div class="text-[10px] font-bold text-emerald-400">SCORE</div>
-                      </div>
-                    </div>
-
-                    <div class="absolute top-3 right-3 font-mono-code text-[11px] font-bold px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md text-white border border-white/10"
+                    <div class="absolute top-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-brand-600 shadow-sm"
+                         x-text="'Score ' + clip.virality_score"></div>
+                    <div class="absolute top-3 right-3 rounded-md bg-gray-900/80 px-2 py-0.5 text-xs font-medium text-white"
                          x-text="Math.round(clip.duration) + 's'"></div>
-
-                    <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent p-4 pt-12">
-                      <div class="inline-block px-2 py-0.5 rounded bg-amber-400 text-black font-extrabold text-[10px] uppercase tracking-wide mb-1.5"
-                           x-text="clip.hook_text || 'HOOK'"></div>
-                      <h3 class="font-bold text-xs sm:text-sm text-white line-clamp-2 leading-snug" x-text="clip.title"></h3>
+                    <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3.5 pt-10">
+                      <div class="inline-block rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-900 mb-1" x-text="clip.hook_text || 'HOOK'"></div>
+                      <h3 class="line-clamp-2 text-xs font-semibold text-white" x-text="clip.title"></h3>
                     </div>
                   </div>
 
-                  <div class="p-3.5 space-y-1.5">
-                    <div class="flex items-center justify-between text-[11px] text-slate-400">
-                      <span class="font-mono-code" x-text="formatDuration(clip.start_time) + ' → ' + formatDuration(clip.end_time)"></span>
-                      <span class="uppercase font-bold text-violet-400 text-[10px]" x-text="clip.category"></span>
+                  <div class="p-4 space-y-1.5">
+                    <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <span x-text="formatDuration(clip.start_time) + ' - ' + formatDuration(clip.end_time)"></span>
+                      <span class="font-medium text-brand-500 capitalize" x-text="clip.category"></span>
                     </div>
-                    <p class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed" x-text="clip.reason"></p>
+                    <p class="line-clamp-2 text-xs text-gray-500 dark:text-gray-400" x-text="clip.reason"></p>
                   </div>
                 </div>
 
-                <!-- Card Footer Actions -->
-                <div class="p-3 pt-0 flex items-center gap-1.5">
-                  <button @click="openClipStudio(clip)"
-                          class="flex-1 py-2 rounded-xl btn-studio-primary text-xs flex items-center justify-center gap-1.5">
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                    <span>Studio &amp; Post</span>
+                <div class="flex items-center gap-2 px-4 pb-4">
+                  <button type="button" @click="openClipStudio(clip)"
+                          class="flex-1 rounded-lg bg-brand-500 py-2 text-xs font-medium text-white hover:bg-brand-600 transition">
+                    Studio &amp; Post
                   </button>
-                  <button @click="copyCaption(clip)" title="Copy Caption"
-                          class="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] text-slate-300 border border-white/[0.06] transition">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  <button type="button" @click="copyCaption(clip)" title="Copy Caption"
+                          class="rounded-lg border border-gray-200 p-2 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                   </button>
                   <a :href="'/api/clips/' + clip.id + '/download'" title="Download MP4"
-                     class="p-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/25 transition">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                     class="rounded-lg border border-gray-200 p-2 text-emerald-600 hover:bg-emerald-50 dark:border-gray-700 dark:text-emerald-400 dark:hover:bg-emerald-500/10 transition">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                   </a>
                 </div>
               </div>
             </template>
           </div>
-        </div>
+        </section>
 
         <!-- ==================== PAGE 4: SOURCE PROJECTS TABLE ==================== -->
-        <div x-show="activeTab === 'projects'" x-transition.opacity style="display:none;" class="space-y-5">
-          <div class="bento-card rounded-2xl overflow-hidden">
-            <div class="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+        <section x-cloak x-show="activeTab === 'projects'" x-transition.opacity>
+          <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+            <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-800">
               <div>
-                <h2 class="font-bold text-base">Source YouTube Projects</h2>
-                <p class="text-xs text-slate-400">Kelola semua video sumber, jalankan Re-Train Hook V2, atau buka koleksi klipnya.</p>
+                <h2 class="text-base font-semibold text-gray-800 dark:text-white/90">Source YouTube Projects</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Kelola proses download, status AI pipeline, dan pencarian ulang Hook V2.</p>
               </div>
-              <button @click="fetchProjects()" class="px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs font-semibold flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-                <span>Refresh</span>
+              <button type="button" @click="fetchProjects()"
+                      class="rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 transition">
+                Refresh
               </button>
             </div>
 
-            <div class="divide-y divide-white/[0.06]">
-              <template x-for="p in projects" :key="p.id">
-                <div class="p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5 hover:bg-white/[0.02] transition">
-                  <div class="flex items-start sm:items-center gap-4 min-w-0">
-                    <div class="w-32 h-20 rounded-xl bg-slate-900 overflow-hidden shrink-0 border border-white/10 relative">
-                      <img x-show="p.thumbnail_url" :src="p.thumbnail_url" class="w-full h-full object-cover" alt="Thumbnail" />
-                      <span x-show="p.duration > 0" class="font-mono-code absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/85 text-[10px] text-white font-bold"
-                            x-text="formatDuration(p.duration)"></span>
-                    </div>
-                    <div class="min-w-0 space-y-1">
-                      <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                              :class="p.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : (p.status === 'failed' ? 'bg-red-500/15 text-red-400' : 'bg-violet-500/15 text-violet-300')">
-                          <span class="w-1.5 h-1.5 rounded-full" :class="p.status === 'completed' ? 'bg-emerald-400' : (p.status === 'failed' ? 'bg-red-400' : 'bg-violet-400 animate-ping')"></span>
-                          <span x-text="p.status.toUpperCase()"></span>
-                        </span>
-                        <span class="font-mono-code text-[11px] px-2 py-0.5 rounded bg-white/[0.05] text-slate-300" x-text="p.layout_mode"></span>
-                      </div>
-                      <h3 class="font-bold text-sm sm:text-base truncate" x-text="p.title || p.youtube_url"></h3>
-                      <p class="text-xs text-slate-400 truncate" x-text="p.status_message"></p>
-                      <div x-show="p.status === 'processing' || p.status === 'queued'" class="w-64 h-1.5 bg-white/10 rounded-full overflow-hidden mt-2">
-                        <div class="h-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all duration-500" :style="'width:' + p.progress + '%'"></div>
-                      </div>
-                    </div>
-                  </div>
+            <div tabindex="0" role="region" aria-label="Source Projects Table" class="table-wrapper responsive-stack px-6 py-2">
+              <table class="min-w-full">
+                <thead>
+                  <tr class="border-b border-gray-100 dark:border-gray-800">
+                    <th scope="col" class="py-3 text-left text-xs font-medium text-gray-500">YouTube Source</th>
+                    <th scope="col" class="py-3 text-left text-xs font-medium text-gray-500">Layout</th>
+                    <th scope="col" class="py-3 text-left text-xs font-medium text-gray-500">Progress</th>
+                    <th scope="col" class="py-3 text-left text-xs font-medium text-gray-500">Clips</th>
+                    <th scope="col" class="py-3 text-right text-xs font-medium text-gray-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                  <template x-for="p in projects" :key="p.id">
+                    <tr>
+                      <th scope="row" class="py-4 pr-4 text-left font-normal">
+                        <div class="flex items-center gap-3.5">
+                          <img x-show="p.thumbnail_url" :src="p.thumbnail_url" class="h-12 w-20 shrink-0 rounded-lg object-cover border border-gray-200 dark:border-gray-700" alt="Thumb" />
+                          <div class="min-w-0 max-w-xs">
+                            <div class="truncate text-sm font-semibold text-gray-800 dark:text-white/90" x-text="p.title || p.youtube_url"></div>
+                            <div class="text-xs text-gray-500" x-text="(p.channel || 'YouTube') + (p.duration ? ' • ' + formatDuration(p.duration) : '')"></div>
+                          </div>
+                        </div>
+                      </th>
+                      <td data-label="Layout" class="py-4">
+                        <span class="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-500 dark:bg-brand-500/15 dark:text-brand-400" x-text="p.layout_mode"></span>
+                      </td>
+                      <td data-label="Progress" class="py-4 min-w-[200px]">
+                        <div class="flex items-center justify-between text-xs mb-1">
+                          <span class="font-semibold"
+                                :class="p.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' : (p.status === 'failed' ? 'text-red-500' : 'text-brand-500')"
+                                x-text="p.status === 'completed' ? 'Completed' : (p.status === 'failed' ? 'Failed' : p.progress + '%')"></span>
+                        </div>
+                        <div class="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                          <div class="h-full rounded-full transition-all"
+                               :class="p.status === 'completed' ? 'bg-emerald-500' : (p.status === 'failed' ? 'bg-red-500' : 'bg-brand-500')"
+                               :style="'width:' + p.progress + '%'"></div>
+                        </div>
+                        <div class="mt-1 truncate text-[11px] text-gray-500 max-w-[220px]" x-text="p.status_message"></div>
+                      </td>
+                      <td data-label="Clips" class="py-4 text-sm font-semibold text-gray-800 dark:text-white" x-text="p.clip_count || 0"></td>
+                      <td data-label="Actions" class="py-4 text-right whitespace-nowrap space-x-1.5">
+                        <button type="button" @click="filterByProject(p.id)" class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600 transition">
+                          Clips
+                        </button>
+                        <button type="button" x-show="p.status === 'completed'" @click="reanalyzeProject(p.id)"
+                                class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 transition">
+                          Re-Train V2
+                        </button>
+                        <button type="button" x-show="p.status === 'failed'" @click="retryProject(p.id)"
+                                class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 transition">
+                          Retry
+                        </button>
+                        <button type="button" @click="deleteProject(p.id)"
+                                class="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 transition" aria-label="Delete Project">
+                          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
 
-                  <div class="flex flex-wrap items-center gap-2.5 shrink-0">
-                    <button @click="filterByProject(p.id)"
-                            class="px-4 py-2 rounded-xl btn-studio-primary text-xs">
-                      View Clips (<span x-text="p.clip_count || 0"></span>)
-                    </button>
-                    <button x-show="p.status === 'completed'" @click="reanalyzeProject(p.id)"
-                            class="px-3.5 py-2 rounded-xl bg-violet-500/15 hover:bg-violet-500/25 text-violet-300 border border-violet-500/30 text-xs font-bold">
-                      Re-Train Hook V2
-                    </button>
-                    <button x-show="p.status === 'failed'" @click="retryProject(p.id)"
-                            class="px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold">
-                      Retry Turbo
-                    </button>
-                    <button @click="deleteProject(p.id)"
-                            class="p-2 rounded-xl bg-white/[0.04] hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-white/[0.06] transition">
-                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                    </button>
-                  </div>
+        <!-- ==================== PAGE 5: LIVE STREAM MONITOR ==================== -->
+        <section x-cloak x-show="activeTab === 'live'" x-transition.opacity class="mx-auto max-w-4xl space-y-6">
+          <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+            <div class="flex items-center gap-2.5 border-b border-gray-100 px-6 py-4 dark:border-gray-800">
+              <span class="h-2.5 w-2.5 rounded-full bg-red-500 live-dot"></span>
+              <h2 class="text-base font-semibold text-gray-800 dark:text-white/90">Real-Time YouTube Live Auto-Clipper</h2>
+            </div>
+            <div class="p-6 space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="sm:col-span-2">
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Active YouTube Live URL</label>
+                  <input type="url" x-model="liveForm.youtube_url" placeholder="https://www.youtube.com/live/..."
+                         class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
                 </div>
-              </template>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Layout Mode</label>
+                  <select x-model="liveForm.layout_mode" class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                    <option value="gaming_split">Gaming Split-Screen</option>
+                    <option value="podcast">Podcast Face-Track</option>
+                    <option value="blur_canvas">16:9 Blur Canvas</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Rolling Chunk Interval (sec)</label>
+                  <input type="number" min="60" max="600" x-model.number="liveForm.chunk_seconds"
+                         class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-4 border-t border-gray-100 pt-4 dark:border-gray-800">
+                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+                  <input type="checkbox" x-model="liveForm.auto_post" class="h-4 w-4 rounded accent-brand-500" />
+                  <span>Auto-Publish to TikTok &amp; Instagram Reels</span>
+                </label>
+                <button type="button" @click="startLiveMonitor()" :disabled="!liveForm.youtube_url.trim()"
+                        class="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-40 transition">
+                  Start Live Monitor
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- ==================== PAGE 5: LIVE STREAM RADAR ==================== -->
-        <div x-show="activeTab === 'live'" x-transition.opacity style="display:none;" class="max-w-4xl mx-auto space-y-6">
-          <div class="bento-card rounded-3xl p-7 space-y-5">
-            <div class="flex items-center gap-3">
-              <span class="w-3 h-3 rounded-full bg-rose-500 live-dot"></span>
+        <!-- ==================== PAGE 6: API & SOCIAL INTEGRATIONS ==================== -->
+        <section x-cloak x-show="activeTab === 'settings'" x-transition.opacity class="mx-auto max-w-3xl space-y-6">
+          <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+            <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-800">
               <div>
-                <h2 class="text-lg font-extrabold">Real-Time Live Stream Radar</h2>
-                <p class="text-xs text-slate-400">Captures rolling segments from active YouTube Live broadcasts and auto-renders high-scoring moments.</p>
+                <h2 class="text-base font-semibold text-gray-800 dark:text-white/90">Google Gemini AI Configuration</h2>
+                <p class="text-xs text-gray-500">Opsional — aplikasi tetap berjalan otomatis menggunakan Hook Engine V2 lokal.</p>
               </div>
+              <a href="https://aistudio.google.com/apikey" target="_blank" class="text-xs font-semibold text-brand-500 hover:underline">Get Free API Key &rarr;</a>
             </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6">
               <div class="sm:col-span-2">
-                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Active YouTube Live URL</label>
-                <input type="url" x-model="liveForm.youtube_url" placeholder="https://www.youtube.com/live/..."
-                       class="studio-input w-full rounded-xl px-4 py-3 text-sm" />
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Gemini API Key</label>
+                <input type="password" x-model="settings.gemini_api_key" placeholder="AIzaSy..."
+                       class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Framing Mode</label>
-                <select x-model="liveForm.layout_mode" class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold">
-                  <option value="gaming_split">Gaming Split-Screen</option>
-                  <option value="podcast">Podcast Face-Track</option>
-                  <option value="blur_canvas">16:9 Cinema Blur</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Rolling Buffer Window (Seconds)</label>
-                <input type="number" min="60" max="600" x-model.number="liveForm.chunk_seconds"
-                       class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-mono-code" />
-              </div>
-            </div>
-
-            <div class="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-white/[0.06]">
-              <label class="flex items-center gap-2.5 text-xs text-slate-300 cursor-pointer">
-                <input type="checkbox" x-model="liveForm.auto_post" class="rounded accent-rose-500 w-4 h-4" />
-                <span>Autopilot Publish to TikTok &amp; Instagram Reels</span>
-              </label>
-              <button @click="startLiveMonitor()" :disabled="!liveForm.youtube_url.trim()"
-                      class="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-bold text-xs shadow-lg transition">
-                Launch Live Radar
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ==================== PAGE 6: API & SOCIAL AUTH ==================== -->
-        <div x-show="activeTab === 'settings'" x-transition.opacity style="display:none;" class="max-w-3xl mx-auto space-y-6">
-          <div class="bento-card rounded-2xl p-6 space-y-4">
-            <div class="flex items-center justify-between border-b border-white/[0.06] pb-4">
-              <div>
-                <h2 class="font-bold text-base">Google Gemini 4 AI Director</h2>
-                <p class="text-xs text-slate-400">Optional — combines with our local Multi-Factor Viral &amp; Hook V2 engine.</p>
-              </div>
-              <a href="https://aistudio.google.com/apikey" target="_blank" class="text-xs text-violet-400 hover:underline font-bold">Get API Key &rarr;</a>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="sm:col-span-2">
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Gemini API Key</label>
-                <input type="password" x-model="settings.gemini_api_key" placeholder="AIzaSy..." class="studio-input w-full rounded-xl px-4 py-2.5 text-sm font-mono-code" />
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Reasoning Model</label>
-                <select x-model="settings.gemini_model" class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Gemini Model</label>
+                <select x-model="settings.gemini_model" class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
                   <option value="gemini-4-hydrogen">Gemini 4 Hydrogen (Recommended)</option>
                   <option value="gemini-4-argon">Gemini 4 Argon</option>
                   <option value="gemini-4-neon">Gemini 4 Neon</option>
@@ -739,217 +793,214 @@
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">ASR Transcription Pipeline</label>
-                <select x-model="settings.transcribe_engine" class="studio-input w-full rounded-xl px-3.5 py-2.5 text-xs font-semibold">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Transcription Engine</label>
+                <select x-model="settings.transcribe_engine" class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
                   <option value="auto">Auto (YouTube JSON3 &rarr; Gemini 3.5 Transcribe)</option>
                   <option value="gemini">Gemini 3.5 Transcribe</option>
-                  <option value="youtube_subs">YouTube Word-Offsets Only</option>
+                  <option value="youtube_subs">YouTube Subtitles Only</option>
                 </select>
               </div>
             </div>
           </div>
 
-          <div class="bento-card rounded-2xl p-6 space-y-4">
-            <div class="border-b border-white/[0.06] pb-4">
-              <h2 class="font-bold text-base">Direct Social Publishing (TikTok &amp; Instagram Reels)</h2>
-              <p class="text-xs text-slate-400">Connect official API credentials for 1-click publishing straight from the Studio Inspector.</p>
+          <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+            <div class="border-b border-gray-100 px-6 py-4 dark:border-gray-800">
+              <h2 class="text-base font-semibold text-gray-800 dark:text-white/90">TikTok &amp; Instagram Reels Publishing API</h2>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6">
               <div class="sm:col-span-2">
-                <label class="block text-xs font-semibold text-slate-300 mb-1">TikTok Content Posting API v2 Token</label>
-                <input type="password" x-model="settings.tiktok_access_token" placeholder="act.xxxxx..." class="studio-input w-full rounded-xl px-4 py-2.5 text-sm font-mono-code" />
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">TikTok Access Token (Content Posting API v2)</label>
+                <input type="password" x-model="settings.tiktok_access_token" placeholder="act.xxxxx..."
+                       class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Instagram Business User ID</label>
-                <input type="text" x-model="settings.instagram_user_id" placeholder="178414xxxxx" class="studio-input w-full rounded-xl px-4 py-2.5 text-sm font-mono-code" />
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Instagram Business User ID</label>
+                <input type="text" x-model="settings.instagram_user_id" placeholder="178414xxxxx"
+                       class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Public Tunnel URL (for Meta Reels Pull)</label>
-                <input type="url" x-model="settings.public_base_url" placeholder="https://xxxx.ngrok-free.app" class="studio-input w-full rounded-xl px-4 py-2.5 text-sm font-mono-code" />
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Public Base URL (ngrok / Tunnel)</label>
+                <input type="url" x-model="settings.public_base_url" placeholder="https://xxxx.ngrok-free.app"
+                       class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
               </div>
               <div class="sm:col-span-2">
-                <label class="block text-xs font-semibold text-slate-300 mb-1">Meta Long-Lived Graph Token</label>
-                <input type="password" x-model="settings.instagram_access_token" placeholder="EAAxxxxx..." class="studio-input w-full rounded-xl px-4 py-2.5 text-sm font-mono-code" />
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Instagram Graph Access Token</label>
+                <input type="password" x-model="settings.instagram_access_token" placeholder="EAAxxxxx..."
+                       class="ta-input h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
               </div>
-            </div>
-            <div class="pt-3 flex justify-end">
-              <button @click="saveSettings()" class="px-6 py-2.5 rounded-xl btn-studio-primary text-xs">
-                Save Configuration
-              </button>
+              <div class="sm:col-span-2 flex justify-end pt-2">
+                <button type="button" @click="saveSettings()"
+                        class="rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-600 transition">
+                  Save Changes
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
       </main>
     </div>
   </div>
 
-  <!-- ==================== STUDIO INSPECTOR MODAL (9:16 PLAYER + SOCIAL PUBLISH) ==================== -->
-  <div x-show="studioClip" x-transition.opacity style="display:none;"
-       class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bento-card rounded-3xl max-w-4xl w-full p-7 border border-white/15 shadow-2xl my-8" @click.away="studioClip = null">
-      <div class="flex items-center justify-between pb-4 border-b border-white/[0.08]">
-        <div class="flex items-center gap-3">
-          <span class="font-mono-code px-3 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-extrabold text-xs"
-                x-text="'SCORE ' + (studioClip?.virality_score || 0) + '/100'"></span>
-          <h3 class="font-extrabold text-base truncate max-w-lg" x-text="studioClip?.title"></h3>
+  <!-- ==================== NATIVE <dialog> STUDIO PREVIEW & POST MODAL (modern-web-guidance: dialog) ==================== -->
+  <dialog x-ref="studioDialog" closedby="any" aria-labelledby="studio-dialog-title"
+          @close="onStudioDialogClose()"
+          class="ta-dialog w-full">
+    <div class="w-full max-h-[90dvh] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900 text-gray-900 dark:text-white">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+                x-text="'Viral Score ' + studioForm.virality_score + '/100'"></span>
+          <h1 id="studio-dialog-title" class="truncate text-base font-bold" x-text="studioForm.title"></h1>
         </div>
-        <button @click="studioClip = null" class="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white">
+        <button type="button" @click="closeClipStudio()" aria-label="Close Studio Modal"
+                class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-white">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-7 mt-6 items-start">
-        <!-- Left: 9:16 Vertical Monitor -->
+      <div class="mt-5 grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
         <div class="md:col-span-5 flex flex-col items-center">
-          <div class="phone-frame w-full max-w-[270px]">
-            <template x-if="studioClip?.video_url">
-              <video :src="studioClip.video_url + '?t=' + studioClip.updated_at" :poster="studioClip.thumbnail_url"
-                     controls autoplay playsinline class="w-full h-full object-cover"></video>
+          <div class="phone-frame w-full max-w-[260px]">
+            <template x-if="studioForm.video_url">
+              <video :src="studioForm.video_url + '?t=' + studioForm.updated_at" :poster="studioForm.thumbnail_url"
+                     controls playsinline class="h-full w-full object-cover"></video>
             </template>
           </div>
-          <div class="font-mono-code text-xs text-slate-400 mt-2.5"
-               x-text="formatDuration(studioClip?.start_time) + ' → ' + formatDuration(studioClip?.end_time) + ' (' + Math.round(studioClip?.duration || 0) + 's)'"></div>
+          <div class="mt-2 text-xs text-gray-500"
+               x-text="formatDuration(studioForm.start_time) + ' - ' + formatDuration(studioForm.end_time) + ' (' + Math.round(studioForm.duration || 0) + 's)'"></div>
         </div>
 
-        <!-- Right: Telemetry, Caption Editor & Publish Suite -->
         <div class="md:col-span-7 space-y-4">
-          <div class="studio-subcard p-4 rounded-2xl space-y-1.5">
-            <div class="flex items-center justify-between">
-              <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-400" x-text="'HOOK: ' + (studioClip?.hook_text || '-')"></span>
-              <span class="font-mono-code text-[11px] text-violet-400 uppercase" x-text="studioClip?.layout_mode"></span>
-            </div>
-            <p class="text-xs text-slate-300 leading-relaxed" x-text="studioClip?.reason"></p>
+          <div class="rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-xs dark:border-gray-800 dark:bg-gray-800/50 space-y-1">
+            <div class="font-bold text-brand-500 dark:text-brand-400" x-text="'Hook Banner: ' + (studioForm.hook_text || '-')"></div>
+            <div class="text-gray-600 dark:text-gray-300" x-text="studioForm.reason"></div>
           </div>
 
           <div>
-            <div class="flex items-center justify-between text-xs mb-1.5">
-              <span class="font-bold text-slate-300">Social Media Caption &amp; Tags</span>
-              <button @click="copyCaption(studioClip)" class="text-violet-400 hover:text-violet-300 font-bold flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                <span>Copy Text</span>
-              </button>
+            <div class="mb-1 flex items-center justify-between text-xs">
+              <span class="font-semibold text-gray-700 dark:text-gray-300">Caption &amp; Hashtags</span>
+              <button type="button" @click="copyCaption(studioForm)" class="font-semibold text-brand-500 hover:underline">Copy Text</button>
             </div>
-            <textarea x-model="studioClip.caption" rows="3" class="studio-input w-full rounded-xl p-3 text-xs leading-relaxed"></textarea>
-            <input type="text" x-model="studioClip.hashtags" class="studio-input w-full mt-2 rounded-xl px-3.5 py-2 text-xs font-mono-code text-cyan-400" />
+            <textarea x-model="studioForm.caption" rows="3"
+                      class="ta-input w-full rounded-lg border border-gray-300 bg-transparent p-3 text-xs dark:border-gray-700 dark:bg-gray-950"></textarea>
+            <input type="text" x-model="studioForm.hashtags"
+                   class="ta-input mt-2 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-xs text-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-brand-400" />
           </div>
 
-          <div class="flex flex-wrap gap-2.5 pt-1">
-            <a :href="'/api/clips/' + studioClip?.id + '/download'"
-               class="px-4 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-2 transition">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-              <span>Download MP4 (1080p)</span>
+          <div class="flex flex-wrap gap-2">
+            <a :href="'/api/clips/' + studioForm.id + '/download'"
+               class="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white hover:bg-emerald-700 transition">
+              Download MP4 (1080×1920)
             </a>
-            <button @click="openEditModal(studioClip)"
-                    class="px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-bold flex items-center gap-2 transition">
-              <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></svg>
-              <span>Trim &amp; Facecam Crop</span>
+            <button type="button" @click="openEditModalFromStudio()"
+                    class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 transition">
+              Trim &amp; Crop Facecam
             </button>
           </div>
 
-          <!-- Direct Social Publish Row -->
-          <div class="pt-4 border-t border-white/[0.08]">
-            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Direct Cloud Publish</div>
-            <div class="flex flex-wrap gap-2.5">
-              <button @click="publishClip(studioClip, ['tiktok'])" :disabled="publishingId === studioClip?.id"
-                      class="px-4 py-2.5 rounded-xl bg-white/[0.07] hover:bg-white/[0.14] border border-white/15 text-white text-xs font-bold transition">
-                Publish to TikTok
+          <div class="border-t border-gray-100 pt-4 dark:border-gray-800">
+            <div class="mb-2 text-xs font-semibold text-gray-500 uppercase">Publish to Social Media</div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" @click="publishClip(studioForm, ['tiktok'])" :disabled="publishingId === studioForm.id"
+                      class="rounded-lg bg-gray-900 px-4 py-2 text-xs font-medium text-white hover:bg-black dark:bg-white dark:text-gray-900 transition">
+                Post to TikTok
               </button>
-              <button @click="publishClip(studioClip, ['instagram'])" :disabled="publishingId === studioClip?.id"
-                      class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-600 to-amber-500 hover:brightness-110 text-white text-xs font-bold transition">
-                Publish to IG Reels
+              <button type="button" @click="publishClip(studioForm, ['instagram'])" :disabled="publishingId === studioForm.id"
+                      class="rounded-lg bg-gradient-to-r from-pink-600 to-amber-500 px-4 py-2 text-xs font-medium text-white hover:brightness-110 transition">
+                Post to IG Reels
               </button>
-              <button @click="publishClip(studioClip, ['tiktok', 'instagram'])" :disabled="publishingId === studioClip?.id"
-                      class="px-4 py-2.5 rounded-xl btn-studio-primary text-xs">
-                Publish Both
+              <button type="button" @click="publishClip(studioForm, ['tiktok', 'instagram'])" :disabled="publishingId === studioForm.id"
+                      class="rounded-lg bg-brand-500 px-4 py-2 text-xs font-medium text-white hover:bg-brand-600 transition">
+                Post Both
               </button>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </dialog>
 
-  <!-- ==================== MODAL: TRIM & VISUAL FACECAM CROPPER ==================== -->
-  <div x-show="editModal.open" x-transition.opacity style="display:none;"
-       class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bento-card rounded-3xl max-w-3xl w-full p-7 border border-white/15 shadow-2xl my-8" @click.away="editModal.open = false">
-      <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.08]">
-        <h3 class="font-extrabold text-base">Trim Timestamps &amp; Facecam Crop Region</h3>
-        <button @click="editModal.open = false" class="text-slate-400 hover:text-white text-xl">&times;</button>
+  <!-- ==================== NATIVE <dialog> TRIM & VISUAL FACECAM CROPPER ==================== -->
+  <dialog x-ref="editDialog" closedby="any" aria-labelledby="edit-dialog-title"
+          class="ta-dialog w-full">
+    <div class="w-full max-h-[90dvh] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900 text-gray-900 dark:text-white">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
+        <h1 id="edit-dialog-title" class="text-base font-bold">Trim Clip &amp; Adjust Facecam Crop</h1>
+        <button type="button" @click="closeEditModal()" aria-label="Close Edit Modal"
+                class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Clip Title</label>
-          <input type="text" x-model="editModal.title" class="studio-input w-full rounded-xl px-3.5 py-2 text-xs" />
+          <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Clip Title</label>
+          <input type="text" x-model="editModal.title" class="ta-input h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" />
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Upper Hook Banner</label>
-          <input type="text" x-model="editModal.hook_text" class="studio-input w-full rounded-xl px-3.5 py-2 text-xs" />
+          <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Hook Banner Text</label>
+          <input type="text" x-model="editModal.hook_text" class="ta-input h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" />
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Start Time (sec)</label>
-          <input type="number" step="0.5" x-model.number="editModal.start_time" class="studio-input w-full rounded-xl px-3.5 py-2 text-xs font-mono-code" />
+          <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Start Time (sec)</label>
+          <input type="number" step="0.5" x-model.number="editModal.start_time" class="ta-input h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" />
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">End Time (sec)</label>
-          <input type="number" step="0.5" x-model.number="editModal.end_time" class="studio-input w-full rounded-xl px-3.5 py-2 text-xs font-mono-code" />
+          <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">End Time (sec)</label>
+          <input type="number" step="0.5" x-model.number="editModal.end_time" class="ta-input h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700" />
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">9:16 Layout</label>
-          <select x-model="editModal.layout_mode" class="studio-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold">
+          <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Layout Mode</label>
+          <select x-model="editModal.layout_mode" class="ta-input h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900">
             <option value="gaming_split">Gaming Split-Screen</option>
             <option value="podcast">Podcast Face-Track</option>
-            <option value="blur_canvas">16:9 Cinema Blur</option>
+            <option value="blur_canvas">16:9 Blur Canvas</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Karaoke Style</label>
-          <select x-model="editModal.subtitle_style" class="studio-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold">
+          <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Subtitle Style</label>
+          <select x-model="editModal.subtitle_style" class="ta-input h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900">
             <option value="karaoke_yellow">Opus Yellow Pop</option>
-            <option value="karaoke_green">Neon Emerald</option>
-            <option value="neon_cyan">Cyber Cyan</option>
-            <option value="clean_white">Minimalist White</option>
+            <option value="karaoke_green">Emerald Green</option>
+            <option value="neon_cyan">Cyan Pop</option>
+            <option value="clean_white">Clean White</option>
             <option value="none">No Subtitles</option>
           </select>
         </div>
       </div>
 
-      <div x-show="editModal.layout_mode === 'gaming_split'" class="mt-5 pt-4 border-t border-white/[0.08]">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <span class="text-xs font-bold text-amber-400">Drag across the 16:9 frame to lock the streamer's facecam region</span>
-          <div class="flex gap-1.5 text-[11px]">
-            <button @click="applyFacecamPreset('bottom_right')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12]">Bottom Right</button>
-            <button @click="applyFacecamPreset('bottom_left')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12]">Bottom Left</button>
-            <button @click="applyFacecamPreset('top_right')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12]">Top Right</button>
-            <button @click="applyFacecamPreset('top_left')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12]">Top Left</button>
+      <div x-show="editModal.layout_mode === 'gaming_split'" class="mt-5 border-t border-gray-100 pt-4 dark:border-gray-800">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <span class="text-xs font-semibold text-brand-500">Drag yellow box on 16:9 preview to set Facecam crop</span>
+          <div class="flex gap-1.5 text-xs">
+            <button type="button" @click="applyFacecamPreset('bottom_right')" class="rounded border border-gray-200 px-2 py-1 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">Bottom Right</button>
+            <button type="button" @click="applyFacecamPreset('bottom_left')" class="rounded border border-gray-200 px-2 py-1 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">Bottom Left</button>
+            <button type="button" @click="applyFacecamPreset('top_right')" class="rounded border border-gray-200 px-2 py-1 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">Top Right</button>
+            <button type="button" @click="applyFacecamPreset('top_left')" class="rounded border border-gray-200 px-2 py-1 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">Top Left</button>
           </div>
         </div>
-
-        <div class="crop-stage bg-black aspect-video w-full"
+        <div class="crop-stage aspect-video w-full bg-black"
              x-ref="cropStage"
              @mousedown="startCropDrag($event)"
              @mousemove="moveCropDrag($event)"
              @mouseup="endCropDrag()"
              @mouseleave="endCropDrag()">
-          <img x-show="activePreviewUrl()" :src="activePreviewUrl()" class="w-full h-full object-contain pointer-events-none" alt="Preview" />
+          <img x-show="activePreviewUrl()" :src="activePreviewUrl()" class="h-full w-full object-contain pointer-events-none" alt="Frame Preview" />
           <div class="crop-box-overlay"
                :style="`left:${editModal.facecam_box.x*100}%; top:${editModal.facecam_box.y*100}%; width:${editModal.facecam_box.w*100}%; height:${editModal.facecam_box.h*100}%;`">
-            <span class="crop-box-label">FACECAM REGION</span>
+            <span class="crop-box-label">FACECAM</span>
           </div>
         </div>
       </div>
 
-      <div class="flex justify-end gap-2.5 mt-6 pt-4 border-t border-white/[0.08]">
-        <button @click="editModal.open = false" class="px-4 py-2 rounded-xl bg-white/[0.06] text-xs font-semibold">Cancel</button>
-        <button @click="saveClipEdit(false)" class="px-4 py-2 rounded-xl bg-white/[0.1] text-white text-xs font-semibold">Save Text Only</button>
-        <button @click="saveClipEdit(true)" class="px-5 py-2 rounded-xl btn-studio-primary text-xs">
-          Save &amp; Re-Render 9:16
-        </button>
+      <div class="mt-6 flex justify-end gap-2.5 border-t border-gray-100 pt-4 dark:border-gray-800">
+        <button type="button" @click="closeEditModal()" class="rounded-lg border border-gray-300 px-4 py-2 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-300">Cancel</button>
+        <button type="button" @click="saveClipEdit(false)" class="rounded-lg bg-gray-800 px-4 py-2 text-xs font-medium text-white dark:bg-gray-700">Save Info Only</button>
+        <button type="button" @click="saveClipEdit(true)" class="rounded-lg bg-brand-500 px-5 py-2 text-xs font-medium text-white hover:bg-brand-600">Save &amp; Re-Render 9:16</button>
       </div>
     </div>
-  </div>
+  </dialog>
 
   <script src="/static/js/app.js"></script>
 </body>
