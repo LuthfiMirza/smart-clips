@@ -38,7 +38,7 @@ from backend.models import (
     UpdateClipRequest,
 )
 from backend.services.live_watcher import start_monitor_thread, stop_monitor_thread
-from backend.services.pipeline import rerender_existing_clip, run_vod_pipeline
+from backend.services.pipeline import reanalyze_project_highlights, rerender_existing_clip, run_vod_pipeline
 from backend.services.social_poster import publish_clip_multi
 from backend.services.video_editor import SUBTITLE_STYLES
 from backend.services.youtube_ingestor import inspect_youtube_url
@@ -181,6 +181,30 @@ def api_create_project(req: CreateProjectRequest, background_tasks: BackgroundTa
         max_video_minutes=req.max_video_minutes,
     )
     return {"ok": True, "project": _serialize_project(proj)}
+
+
+@app.post("/api/projects/{project_id}/reanalyze")
+def api_reanalyze_project(project_id: str, background_tasks: BackgroundTasks):
+    proj = get_project(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Proyek tidak ditemukan")
+    from backend.database import update_project
+    update_project(
+        project_id,
+        status="processing",
+        progress=10,
+        status_message="🎯 Memulai analisis ulang Hook & Momen Viral V2 (tanpa download ulang audio)...",
+        error_message="",
+    )
+    background_tasks.add_task(
+        reanalyze_project_highlights,
+        project_id=project_id,
+        clip_count=4,
+        min_duration=25,
+        max_duration=45,
+        hook_banner=True,
+    )
+    return {"ok": True, "project": _serialize_project(get_project(project_id))}
 
 
 @app.post("/api/projects/{project_id}/retry")
