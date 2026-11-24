@@ -52,7 +52,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
-  <link rel="stylesheet" href="/static/css/custom.css" />
+  <link rel="stylesheet" href="/static/css/custom.css?v=20261124-ta2" />
 </head>
 <body x-data="smartClipsApp()" x-init="init()"
       @keydown.window="(e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $refs.searchInput?.focus(); } }"
@@ -577,7 +577,7 @@
             <div class="flex flex-wrap items-center gap-3">
               <label class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Filter Project:</label>
               <select x-model="clipFilterProjectId" class="ta-input h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
-                <option value="">All Projects (<span x-text="allClips.length"></span> Clips)</option>
+                <option value="" x-text="'All Projects (' + allClips.length + ' Clips)'">All Projects</option>
                 <template x-for="p in projects" :key="p.id">
                   <option :value="p.id" x-text="(p.title || p.youtube_url).slice(0, 50) + ' (' + (p.clip_count || 0) + ')'"></option>
                 </template>
@@ -1002,6 +1002,6 @@
     </div>
   </dialog>
 
-  <script src="/static/js/app.js"></script>
+  <script src="/static/js/app.js?v=20261124-ta2"></script>
 </body>
 </html>
