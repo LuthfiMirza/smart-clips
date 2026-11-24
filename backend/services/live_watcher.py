@@ -170,7 +170,7 @@ def _monitor_loop(monitor_id: str, stop_event: threading.Event):
 
             plan = find_viral_highlights(
                 segments=transcript.get("segments", []),
-                audio_spikes=audio_res.get("spikes", []),
+                audio_spikes=audio_res,
                 chat_spikes=[],
                 video_title=f"{monitor.get('title') or 'Live'} (Segmen #{chunk_idx})",
                 duration=duration,
@@ -268,3 +268,4 @@ def _monitor_loop(monitor_id: str, stop_event: threading.Event):
             time.sleep(10)
 
     _ACTIVE_MONITORS.pop(monitor_id, None)
+
