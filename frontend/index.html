@@ -401,6 +401,10 @@
                     </p>
                   </div>
                   <div class="flex items-center gap-2 shrink-0">
+                    <button x-show="selectedProject.status === 'completed'" @click="reanalyzeProject(selectedProject.id)"
+                            class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-pink-600 hover:brightness-110 text-xs font-extrabold text-white shadow">
+                      🎯 Cari Ulang Hook &amp; Momen V2
+                    </button>
                     <button x-show="selectedProject.status === 'failed'" @click="retryProject(selectedProject.id)"
                             class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-cyan-500 hover:brightness-110 text-xs font-extrabold text-white shadow">
                       ⚡ Proses Ulang (Turbo Mode)
